@@ -233,12 +233,6 @@ GLuint gen_crosshair_buffer() {
     return gen_buffer(sizeof(data), data);
 }
 
-GLuint gen_wireframe_buffer(float x, float y, float z, float n) {
-    float data[72];
-    make_cube_wireframe(data, x, y, z, n);
-    return gen_buffer(sizeof(data), data);
-}
-
 GLuint gen_sky_buffer() {
     float data[12288];
     make_sphere(data, 1, 3);
@@ -1168,7 +1162,6 @@ void load_chunk(WorkerItem *item) {
     int p = item->p;
     int q = item->q;
     Map *block_map = item->block_maps[1][1];
-    Map *light_map = item->light_maps[1][1];
     create_world(p, q, map_set_func, block_map);
 }
 
@@ -1698,26 +1691,6 @@ void render_sky(Attrib *attrib, Player *player, GLuint buffer) {
     draw_triangles_3d(attrib, buffer, 512 * 3);
 }
 
-void render_wireframe(Attrib *attrib, Player *player) {
-    State *s = &player->state;
-    float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
-    int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (is_obstacle(hw)) {
-        glUseProgram(attrib->program);
-        glLineWidth(1);
-        glEnable(GL_COLOR_LOGIC_OP);
-        glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-        GLuint wireframe_buffer = gen_wireframe_buffer(hx, hy, hz, 0.53);
-        draw_lines(attrib, wireframe_buffer, 3, 24);
-        del_buffer(wireframe_buffer);
-        glDisable(GL_COLOR_LOGIC_OP);
-    }
-}
-
 void render_crosshairs(Attrib *attrib) {
     float matrix[16];
     set_matrix_2d(matrix, g->width, g->height);
@@ -1962,13 +1935,8 @@ void tree(Block *block) {
 }
 
 void parse_command(const char *buffer, int forward) {
-    char username[128] = {0};
-    char token[128] = {0};
     int radius, count, xc, yc, zc;
-    if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
-        add_message("Successfully imported identity token!");
-    }
-    else if (sscanf(buffer, "/view %d", &radius) == 1) {
+    if (sscanf(buffer, "/view %d", &radius) == 1) {
         if (radius >= 1 && radius <= 24) {
             g->create_radius = radius;
             g->render_radius = radius;
@@ -2420,7 +2388,7 @@ void parse_buffer(char *buffer) {
         if (sscanf(line, "D,%d", &pid) == 1) {
             delete_player(pid);
         }
-        int kp, kq, kk;
+        int kp, kq;
         if (sscanf(line, "R,%d,%d", &kp, &kq) == 2) {
             Chunk *chunk = find_chunk(kp, kq);
             if (chunk) {
@@ -2617,7 +2585,6 @@ int main(int argc, char **argv) {
         // LOCAL VARIABLES //
         reset_model();
         FPS fps = {0, 0, 0};
-        double last_commit = glfwGetTime();
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
 
@@ -2643,7 +2610,6 @@ int main(int argc, char **argv) {
             // FRAME RATE //
             if (g->time_changed) {
                 g->time_changed = 0;
-                last_commit = glfwGetTime();
                 last_update = glfwGetTime();
                 memset(&fps, 0, sizeof(fps));
             }
@@ -2681,9 +2647,6 @@ int main(int argc, char **argv) {
             render_signs(&text_attrib, player);
             render_sign(&text_attrib, player);
             render_players(&block_attrib, player);
-            if (SHOW_WIREFRAME) {
-                render_wireframe(&line_attrib, player);
-            }
 
             // RENDER HUD //
             glClear(GL_DEPTH_BUFFER_BIT);

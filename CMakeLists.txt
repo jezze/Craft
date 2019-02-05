@@ -11,7 +11,7 @@ add_executable(
     deps/noise/noise.c
     deps/tinycthread/tinycthread.c)
 
-add_definitions(-std=c99 -O3)
+add_definitions(-std=c99 -O3 -Wall)
 include_directories(deps/lodepng)
 include_directories(deps/noise)
 include_directories(deps/tinycthread)
