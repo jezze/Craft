@@ -1,16 +1,12 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <curl/curl.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "auth.h"
-#include "client.h"
 #include "config.h"
 #include "cube.h"
-#include "db.h"
 #include "item.h"
 #include "map.h"
 #include "matrix.h"
@@ -33,7 +29,6 @@
 #define ALIGN_RIGHT 2
 
 #define MODE_OFFLINE 0
-#define MODE_ONLINE 1
 
 #define WORKER_IDLE 0
 #define WORKER_BUSY 1
@@ -140,11 +135,7 @@ typedef struct {
     int ortho;
     float fov;
     int suppress_char;
-    int mode;
     int mode_changed;
-    char db_path[MAX_PATH_LENGTH];
-    char server_addr[MAX_ADDR_LENGTH];
-    int server_port;
     int day_length;
     int time_changed;
     Block block0;
@@ -1179,13 +1170,6 @@ void load_chunk(WorkerItem *item) {
     Map *block_map = item->block_maps[1][1];
     Map *light_map = item->light_maps[1][1];
     create_world(p, q, map_set_func, block_map);
-    db_load_blocks(block_map, p, q);
-    db_load_lights(light_map, p, q);
-}
-
-void request_chunk(int p, int q) {
-    int key = db_get_key(p, q);
-    client_chunk(p, q, key);
 }
 
 void init_chunk(Chunk *chunk, int p, int q) {
@@ -1198,7 +1182,6 @@ void init_chunk(Chunk *chunk, int p, int q) {
     dirty_chunk(chunk);
     SignList *signs = &chunk->signs;
     sign_list_alloc(signs, 16);
-    db_load_signs(signs, p, q);
     Map *block_map = &chunk->map;
     Map *light_map = &chunk->lights;
     int dx = p * CHUNK_SIZE - 1;
@@ -1218,8 +1201,6 @@ void create_chunk(Chunk *chunk, int p, int q) {
     item->block_maps[1][1] = &chunk->map;
     item->light_maps[1][1] = &chunk->lights;
     load_chunk(item);
-
-    request_chunk(p, q);
 }
 
 void delete_chunks() {
@@ -1280,7 +1261,6 @@ void check_workers() {
                     map_free(&chunk->lights);
                     map_copy(&chunk->map, block_map);
                     map_copy(&chunk->lights, light_map);
-                    request_chunk(item->p, item->q);
                 }
                 generate_chunk(chunk, item);
             }
@@ -1457,11 +1437,9 @@ void unset_sign(int x, int y, int z) {
         SignList *signs = &chunk->signs;
         if (sign_list_remove_all(signs, x, y, z)) {
             chunk->dirty = 1;
-            db_delete_signs(x, y, z);
         }
     }
     else {
-        db_delete_signs(x, y, z);
     }
 }
 
@@ -1473,11 +1451,9 @@ void unset_sign_face(int x, int y, int z, int face) {
         SignList *signs = &chunk->signs;
         if (sign_list_remove(signs, x, y, z, face)) {
             chunk->dirty = 1;
-            db_delete_sign(x, y, z, face);
         }
     }
     else {
-        db_delete_sign(x, y, z, face);
     }
 }
 
@@ -1496,14 +1472,12 @@ void _set_sign(
             chunk->dirty = 1;
         }
     }
-    db_insert_sign(p, q, x, y, z, face, text);
 }
 
 void set_sign(int x, int y, int z, int face, const char *text) {
     int p = chunked(x);
     int q = chunked(z);
     _set_sign(p, q, x, y, z, face, text, 1);
-    client_sign(x, y, z, face, text);
 }
 
 void toggle_light(int x, int y, int z) {
@@ -1514,8 +1488,6 @@ void toggle_light(int x, int y, int z) {
         Map *map = &chunk->lights;
         int w = map_get(map, x, y, z) ? 0 : 15;
         map_set(map, x, y, z, w);
-        db_insert_light(p, q, x, y, z, w);
-        client_light(x, y, z, w);
         dirty_chunk(chunk);
     }
 }
@@ -1526,11 +1498,9 @@ void set_light(int p, int q, int x, int y, int z, int w) {
         Map *map = &chunk->lights;
         if (map_set(map, x, y, z, w)) {
             dirty_chunk(chunk);
-            db_insert_light(p, q, x, y, z, w);
         }
     }
     else {
-        db_insert_light(p, q, x, y, z, w);
     }
 }
 
@@ -1542,11 +1512,9 @@ void _set_block(int p, int q, int x, int y, int z, int w, int dirty) {
             if (dirty) {
                 dirty_chunk(chunk);
             }
-            db_insert_block(p, q, x, y, z, w);
         }
     }
     else {
-        db_insert_block(p, q, x, y, z, w);
     }
     if (w == 0 && chunked(x) == p && chunked(z) == q) {
         unset_sign(x, y, z);
@@ -1572,7 +1540,6 @@ void set_block(int x, int y, int z, int w) {
             _set_block(p + dx, q + dz, x, y, z, -w, 1);
         }
     }
-    client_block(x, y, z, w);
 }
 
 void record_block(int x, int y, int z, int w) {
@@ -1803,32 +1770,8 @@ void render_text(
 
 void add_message(const char *text) {
     printf("%s\n", text);
-    snprintf(
-        g->messages[g->message_index], MAX_TEXT_LENGTH, "%s", text);
+    snprintf(g->messages[g->message_index], MAX_TEXT_LENGTH, "%s", text);
     g->message_index = (g->message_index + 1) % MAX_MESSAGES;
-}
-
-void login() {
-    char username[128] = {0};
-    char identity_token[128] = {0};
-    char access_token[128] = {0};
-    if (db_auth_get_selected(username, 128, identity_token, 128)) {
-        printf("Contacting login server for username: %s\n", username);
-        if (get_access_token(
-            access_token, 128, username, identity_token))
-        {
-            printf("Successfully authenticated with the login server\n");
-            client_login(username, access_token);
-        }
-        else {
-            printf("Failed to authenticate with the login server\n");
-            client_login("", "");
-        }
-    }
-    else {
-        printf("Logging in anonymously\n");
-        client_login("", "");
-    }
 }
 
 void copy() {
@@ -2021,46 +1964,9 @@ void tree(Block *block) {
 void parse_command(const char *buffer, int forward) {
     char username[128] = {0};
     char token[128] = {0};
-    char server_addr[MAX_ADDR_LENGTH];
-    int server_port = DEFAULT_PORT;
-    char filename[MAX_PATH_LENGTH];
     int radius, count, xc, yc, zc;
     if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
-        db_auth_set(username, token);
         add_message("Successfully imported identity token!");
-        login();
-    }
-    else if (strcmp(buffer, "/logout") == 0) {
-        db_auth_select_none();
-        login();
-    }
-    else if (sscanf(buffer, "/login %128s", username) == 1) {
-        if (db_auth_select(username)) {
-            login();
-        }
-        else {
-            add_message("Unknown username.");
-        }
-    }
-    else if (sscanf(buffer,
-        "/online %128s %d", server_addr, &server_port) >= 1)
-    {
-        g->mode_changed = 1;
-        g->mode = MODE_ONLINE;
-        strncpy(g->server_addr, server_addr, MAX_ADDR_LENGTH);
-        g->server_port = server_port;
-        snprintf(g->db_path, MAX_PATH_LENGTH,
-            "cache.%s.%d.db", g->server_addr, g->server_port);
-    }
-    else if (sscanf(buffer, "/offline %128s", filename) == 1) {
-        g->mode_changed = 1;
-        g->mode = MODE_OFFLINE;
-        snprintf(g->db_path, MAX_PATH_LENGTH, "%s.db", filename);
-    }
-    else if (strcmp(buffer, "/offline") == 0) {
-        g->mode_changed = 1;
-        g->mode = MODE_OFFLINE;
-        snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
     }
     else if (sscanf(buffer, "/view %d", &radius) == 1) {
         if (radius >= 1 && radius <= 24) {
@@ -2122,9 +2028,6 @@ void parse_command(const char *buffer, int forward) {
     }
     else if (sscanf(buffer, "/cylinder %d", &radius) == 1) {
         cylinder(&g->block0, &g->block1, radius, 0);
-    }
-    else if (forward) {
-        client_talk(buffer);
     }
 }
 
@@ -2220,9 +2123,6 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
                 }
                 else if (g->typing_buffer[0] == '/') {
                     parse_command(g->typing_buffer, 1);
-                }
-                else {
-                    client_talk(g->typing_buffer);
                 }
             }
         }
@@ -2521,9 +2421,6 @@ void parse_buffer(char *buffer) {
             delete_player(pid);
         }
         int kp, kq, kk;
-        if (sscanf(line, "K,%d,%d,%d", &kp, &kq, &kk) == 3) {
-            db_set_key(kp, kq, kk);
-        }
         if (sscanf(line, "R,%d,%d", &kp, &kq) == 2) {
             Chunk *chunk = find_chunk(kp, kq);
             if (chunk) {
@@ -2585,7 +2482,6 @@ void reset_model() {
 
 int main(int argc, char **argv) {
     // INITIALIZATION //
-    curl_global_init(CURL_GLOBAL_DEFAULT);
     srand(time(NULL));
     rand();
 
@@ -2698,19 +2594,6 @@ int main(int argc, char **argv) {
     sky_attrib.sampler = glGetUniformLocation(program, "sampler");
     sky_attrib.timer = glGetUniformLocation(program, "timer");
 
-    // CHECK COMMAND LINE ARGUMENTS //
-    if (argc == 2 || argc == 3) {
-        g->mode = MODE_ONLINE;
-        strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH);
-        g->server_port = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
-        snprintf(g->db_path, MAX_PATH_LENGTH,
-            "cache.%s.%d.db", g->server_addr, g->server_port);
-    }
-    else {
-        g->mode = MODE_OFFLINE;
-        snprintf(g->db_path, MAX_PATH_LENGTH, "%s", DB_PATH);
-    }
-
     g->create_radius = CREATE_CHUNK_RADIUS;
     g->render_radius = RENDER_CHUNK_RADIUS;
     g->delete_radius = DELETE_CHUNK_RADIUS;
@@ -2726,29 +2609,10 @@ int main(int argc, char **argv) {
         thrd_create(&worker->thrd, worker_run, worker);
     }
 
-    // OUTER LOOP //
     int running = 1;
-    while (running) {
-        // DATABASE INITIALIZATION //
-        if (g->mode == MODE_OFFLINE || USE_CACHE) {
-            db_enable();
-            if (db_init(g->db_path)) {
-                return -1;
-            }
-            if (g->mode == MODE_ONLINE) {
-                // TODO: support proper caching of signs (handle deletions)
-                db_delete_all_signs();
-            }
-        }
 
-        // CLIENT INITIALIZATION //
-        if (g->mode == MODE_ONLINE) {
-            client_enable();
-            client_connect(g->server_addr, g->server_port);
-            client_start();
-            client_version(1);
-            login();
-        }
+    while (running)
+    {
 
         // LOCAL VARIABLES //
         reset_model();
@@ -2764,12 +2628,9 @@ int main(int argc, char **argv) {
         me->buffer = 0;
         g->player_count = 1;
 
-        // LOAD STATE FROM DATABASE //
-        int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry);
         force_chunks(me);
-        if (!loaded) {
-            s->y = highest_block(s->x, s->z) + 2;
-        }
+
+        s->y = highest_block(s->x, s->z) + 2;
 
         // BEGIN MAIN LOOP //
         double previous = glfwGetTime();
@@ -2793,29 +2654,11 @@ int main(int argc, char **argv) {
             dt = MAX(dt, 0.0);
             previous = now;
 
-            // HANDLE MOUSE INPUT //
             handle_mouse_input();
-
-            // HANDLE MOVEMENT //
             handle_movement(dt);
 
-            // HANDLE DATA FROM SERVER //
-            char *buffer = client_recv();
-            if (buffer) {
-                parse_buffer(buffer);
-                free(buffer);
-            }
-
-            // FLUSH DATABASE //
-            if (now - last_commit > COMMIT_INTERVAL) {
-                last_commit = now;
-                db_commit();
-            }
-
-            // SEND POSITION TO SERVER //
             if (now - last_update > 0.1) {
                 last_update = now;
-                client_position(s->x, s->y, s->z, s->rx, s->ry);
             }
 
             // PREPARE TO RENDER //
@@ -2947,17 +2790,11 @@ int main(int argc, char **argv) {
         }
 
         // SHUTDOWN //
-        db_save_state(s->x, s->y, s->z, s->rx, s->ry);
-        db_close();
-        db_disable();
-        client_stop();
-        client_disable();
         del_buffer(sky_buffer);
         delete_all_chunks();
         delete_all_players();
     }
 
     glfwTerminate();
-    curl_global_cleanup();
     return 0;
 }
