@@ -28,8 +28,6 @@
 #define ALIGN_CENTER 1
 #define ALIGN_RIGHT 2
 
-#define MODE_OFFLINE 0
-
 #define WORKER_IDLE 0
 #define WORKER_BUSY 1
 #define WORKER_DONE 2
