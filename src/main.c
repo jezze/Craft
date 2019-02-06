@@ -521,9 +521,7 @@ static void draw_plant(Attrib *attrib, GLuint buffer)
 static void delete_all_players()
 {
 
-    Player *player = &g->player;
-
-    del_buffer(player->buffer);
+    del_buffer(g->player.buffer);
 
 }
 
@@ -752,20 +750,40 @@ static int hit_test_face(Player *player, int *x, int *y, int *z, int *face)
         int dy = hy - *y;
         int dz = hz - *z;
 
-        if (dx == -1 && dy == 0 && dz == 0) {
-            *face = 0; return 1;
+        if (dx == -1 && dy == 0 && dz == 0)
+        {
+
+            *face = 0;
+
+            return 1;
+
         }
 
-        if (dx == 1 && dy == 0 && dz == 0) {
-            *face = 1; return 1;
+        if (dx == 1 && dy == 0 && dz == 0)
+        {
+
+            *face = 1;
+
+            return 1;
+
         }
 
-        if (dx == 0 && dy == 0 && dz == -1) {
-            *face = 2; return 1;
+        if (dx == 0 && dy == 0 && dz == -1)
+        {
+
+            *face = 2;
+
+            return 1;
+
         }
 
-        if (dx == 0 && dy == 0 && dz == 1) {
-            *face = 3; return 1;
+        if (dx == 0 && dy == 0 && dz == 1)
+        {
+
+            *face = 3;
+
+            return 1;
+
         }
 
         if (dx == 0 && dy == 1 && dz == 0)
@@ -776,8 +794,9 @@ static int hit_test_face(Player *player, int *x, int *y, int *z, int *face)
             if (degrees < 0)
                 degrees += 360;
 
-            int top = ((degrees + 45) / 90) % 4;
-            *face = 4 + top; return 1;
+            *face = 4 + ((degrees + 45) / 90) % 4;
+
+            return 1;
 
         }
 
@@ -2929,10 +2948,9 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods)
                 if (g->typing_buffer[0] == CRAFT_KEY_SIGN)
                 {
 
-                    Player *player = &g->player;
                     int x, y, z, face;
 
-                    if (hit_test_face(player, &x, &y, &z, &face))
+                    if (hit_test_face(&g->player, &x, &y, &z, &face))
                         set_sign(x, y, z, face, g->typing_buffer + 1);
 
                 }
@@ -3485,13 +3503,9 @@ int main(int argc, char **argv)
         FPS fps = {0, 0, 0};
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
-        Player *me = &g->player;
         State *s = &g->player.state;
 
-        me->id = 0;
-        me->buffer = 0;
-
-        force_chunks(me);
+        force_chunks(&g->player);
 
         s->y = highest_block(s->x, s->z) + 2;
 
@@ -3542,9 +3556,9 @@ int main(int argc, char **argv)
                 last_update = now;
 
             delete_chunks();
-            del_buffer(me->buffer);
+            del_buffer(g->player.buffer);
 
-            me->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
+            g->player.buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
 
             Player *player = &g->player;
 
