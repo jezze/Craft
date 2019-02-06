@@ -858,10 +858,9 @@ void dirty_chunk(Chunk *chunk) {
     }
 }
 
-void occlusion(
-    char neighbors[27], char lights[27], float shades[27],
-    float ao[6][4], float light[6][4])
+void occlusion(char neighbors[27], char lights[27], float shades[27], float ao[6][4], float light[6][4])
 {
+
     static const int lookup3[6][4][3] = {
         {{0, 1, 3}, {2, 1, 5}, {6, 3, 7}, {8, 5, 7}},
         {{18, 19, 21}, {20, 19, 23}, {24, 21, 25}, {26, 23, 25}},
@@ -870,7 +869,8 @@ void occlusion(
         {{0, 3, 9}, {6, 3, 15}, {18, 9, 21}, {24, 15, 21}},
         {{2, 5, 11}, {8, 5, 17}, {20, 11, 23}, {26, 17, 23}}
     };
-   static const int lookup4[6][4][4] = {
+
+    static const int lookup4[6][4][4] = {
         {{0, 1, 3, 4}, {1, 2, 4, 5}, {3, 4, 6, 7}, {4, 5, 7, 8}},
         {{18, 19, 21, 22}, {19, 20, 22, 23}, {21, 22, 24, 25}, {22, 23, 25, 26}},
         {{6, 7, 15, 16}, {7, 8, 16, 17}, {15, 16, 24, 25}, {16, 17, 25, 26}},
@@ -878,9 +878,15 @@ void occlusion(
         {{0, 3, 9, 12}, {3, 6, 12, 15}, {9, 12, 18, 21}, {12, 15, 21, 24}},
         {{2, 5, 11, 14}, {5, 8, 14, 17}, {11, 14, 20, 23}, {14, 17, 23, 26}}
     };
+
     static const float curve[4] = {0.0, 0.25, 0.5, 0.75};
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 4; j++) {
+
+    for (int i = 0; i < 6; i++)
+    {
+
+        for (int j = 0; j < 4; j++)
+        {
+
             int corner = neighbors[lookup3[i][j][0]];
             int side1 = neighbors[lookup3[i][j][1]];
             int side2 = neighbors[lookup3[i][j][2]];
@@ -888,18 +894,27 @@ void occlusion(
             float shade_sum = 0;
             float light_sum = 0;
             int is_light = lights[13] == 15;
-            for (int k = 0; k < 4; k++) {
+
+            for (int k = 0; k < 4; k++)
+            {
+
                 shade_sum += shades[lookup4[i][j][k]];
                 light_sum += lights[lookup4[i][j][k]];
+
             }
-            if (is_light) {
+
+            if (is_light)
                 light_sum = 15 * 4 * 10;
-            }
+
             float total = curve[value] + shade_sum / 4.0;
+
             ao[i][j] = MIN(total, 1.0);
             light[i][j] = light_sum / 15.0 / 4.0;
+
         }
+
     }
+
 }
 
 #define XZ_SIZE (CHUNK_SIZE * 3 + 2)
@@ -909,25 +924,24 @@ void occlusion(
 #define XYZ(x, y, z) ((y) * XZ_SIZE * XZ_SIZE + (x) * XZ_SIZE + (z))
 #define XZ(x, z) ((x) * XZ_SIZE + (z))
 
-void light_fill(
-    char *opaque, char *light,
-    int x, int y, int z, int w, int force)
+void light_fill(char *opaque, char *light, int x, int y, int z, int w, int force)
 {
-    if (x + w < XZ_LO || z + w < XZ_LO) {
+
+    if (x + w < XZ_LO || z + w < XZ_LO)
         return;
-    }
-    if (x - w > XZ_HI || z - w > XZ_HI) {
+
+    if (x - w > XZ_HI || z - w > XZ_HI)
         return;
-    }
-    if (y < 0 || y >= Y_SIZE) {
+
+    if (y < 0 || y >= Y_SIZE)
         return;
-    }
-    if (light[XYZ(x, y, z)] >= w) {
+
+    if (light[XYZ(x, y, z)] >= w)
         return;
-    }
-    if (!force && opaque[XYZ(x, y, z)]) {
+
+    if (!force && opaque[XYZ(x, y, z)])
         return;
-    }
+
     light[XYZ(x, y, z)] = w--;
     light_fill(opaque, light, x - 1, y, z, w, 0);
     light_fill(opaque, light, x + 1, y, z, w, 0);
@@ -935,74 +949,111 @@ void light_fill(
     light_fill(opaque, light, x, y + 1, z, w, 0);
     light_fill(opaque, light, x, y, z - 1, w, 0);
     light_fill(opaque, light, x, y, z + 1, w, 0);
+
 }
 
-void compute_chunk(WorkerItem *item) {
+void compute_chunk(WorkerItem *item)
+{
+
     char *opaque = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
     char *light = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
     char *highest = (char *)calloc(XZ_SIZE * XZ_SIZE, sizeof(char));
-
     int ox = item->p * CHUNK_SIZE - CHUNK_SIZE - 1;
     int oy = -1;
     int oz = item->q * CHUNK_SIZE - CHUNK_SIZE - 1;
 
     // check for lights
     int has_light = 0;
-    if (SHOW_LIGHTS) {
-        for (int a = 0; a < 3; a++) {
-            for (int b = 0; b < 3; b++) {
+
+    if (SHOW_LIGHTS)
+    {
+
+        for (int a = 0; a < 3; a++)
+        {
+
+            for (int b = 0; b < 3; b++)
+            {
+
                 Map *map = item->light_maps[a][b];
-                if (map && map->size) {
+
+                if (map && map->size)
                     has_light = 1;
-                }
+
             }
+
         }
+
     }
 
     // populate opaque array
-    for (int a = 0; a < 3; a++) {
-        for (int b = 0; b < 3; b++) {
+    for (int a = 0; a < 3; a++)
+    {
+
+        for (int b = 0; b < 3; b++)
+        {
+
             Map *map = item->block_maps[a][b];
-            if (!map) {
+
+            if (!map)
                 continue;
-            }
+
             MAP_FOR_EACH(map, ex, ey, ez, ew) {
+
                 int x = ex - ox;
                 int y = ey - oy;
                 int z = ez - oz;
                 int w = ew;
+
                 // TODO: this should be unnecessary
-                if (x < 0 || y < 0 || z < 0) {
+
+                if (x < 0 || y < 0 || z < 0)
                     continue;
-                }
-                if (x >= XZ_SIZE || y >= Y_SIZE || z >= XZ_SIZE) {
+
+                if (x >= XZ_SIZE || y >= Y_SIZE || z >= XZ_SIZE)
                     continue;
-                }
+
                 // END TODO
+
                 opaque[XYZ(x, y, z)] = !is_transparent(w);
-                if (opaque[XYZ(x, y, z)]) {
+
+                if (opaque[XYZ(x, y, z)])
                     highest[XZ(x, z)] = MAX(highest[XZ(x, z)], y);
-                }
+
             } END_MAP_FOR_EACH;
+
         }
+
     }
 
     // flood fill light intensities
-    if (has_light) {
-        for (int a = 0; a < 3; a++) {
-            for (int b = 0; b < 3; b++) {
+    if (has_light)
+    {
+
+        for (int a = 0; a < 3; a++)
+        {
+
+            for (int b = 0; b < 3; b++)
+            {
+
                 Map *map = item->light_maps[a][b];
-                if (!map) {
+
+                if (!map)
                     continue;
-                }
+
                 MAP_FOR_EACH(map, ex, ey, ez, ew) {
+
                     int x = ex - ox;
                     int y = ey - oy;
                     int z = ez - oz;
+
                     light_fill(opaque, light, x, y, z, ew, 1);
+
                 } END_MAP_FOR_EACH;
+
             }
+
         }
+
     }
 
     Map *map = item->block_maps[1][1];
@@ -1011,10 +1062,12 @@ void compute_chunk(WorkerItem *item) {
     int miny = 256;
     int maxy = 0;
     int faces = 0;
+
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
-        if (ew <= 0) {
+
+        if (ew <= 0)
             continue;
-        }
+
         int x = ex - ox;
         int y = ey - oy;
         int z = ez - oz;
@@ -1025,24 +1078,28 @@ void compute_chunk(WorkerItem *item) {
         int f5 = !opaque[XYZ(x, y, z - 1)];
         int f6 = !opaque[XYZ(x, y, z + 1)];
         int total = f1 + f2 + f3 + f4 + f5 + f6;
-        if (total == 0) {
+
+        if (total == 0)
             continue;
-        }
-        if (is_plant(ew)) {
+
+        if (is_plant(ew))
             total = 4;
-        }
+
         miny = MIN(miny, ey);
         maxy = MAX(maxy, ey);
         faces += total;
+
     } END_MAP_FOR_EACH;
 
     // generate geometry
     GLfloat *data = malloc_faces(10, faces);
     int offset = 0;
+
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
-        if (ew <= 0) {
+
+        if (ew <= 0)
             continue;
-        }
+
         int x = ex - ox;
         int y = ey - oy;
         int z = ez - oz;
@@ -1053,56 +1110,96 @@ void compute_chunk(WorkerItem *item) {
         int f5 = !opaque[XYZ(x, y, z - 1)];
         int f6 = !opaque[XYZ(x, y, z + 1)];
         int total = f1 + f2 + f3 + f4 + f5 + f6;
-        if (total == 0) {
+
+        if (total == 0)
             continue;
-        }
+
         char neighbors[27] = {0};
         char lights[27] = {0};
         float shades[27] = {0};
         int index = 0;
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
+
+        for (int dx = -1; dx <= 1; dx++)
+        {
+
+            for (int dy = -1; dy <= 1; dy++)
+            {
+
+                for (int dz = -1; dz <= 1; dz++)
+                {
+
                     neighbors[index] = opaque[XYZ(x + dx, y + dy, z + dz)];
                     lights[index] = light[XYZ(x + dx, y + dy, z + dz)];
                     shades[index] = 0;
-                    if (y + dy <= highest[XZ(x + dx, z + dz)]) {
-                        for (int oy = 0; oy < 8; oy++) {
-                            if (opaque[XYZ(x + dx, y + dy + oy, z + dz)]) {
+
+                    if (y + dy <= highest[XZ(x + dx, z + dz)])
+                    {
+
+                        for (int oy = 0; oy < 8; oy++)
+                        {
+
+                            if (opaque[XYZ(x + dx, y + dy + oy, z + dz)])
+                            {
+
                                 shades[index] = 1.0 - oy * 0.125;
+
                                 break;
+
                             }
+
                         }
+
                     }
+
                     index++;
+
                 }
+
             }
+
         }
+
         float ao[6][4];
         float light[6][4];
+
         occlusion(neighbors, lights, shades, ao, light);
-        if (is_plant(ew)) {
+
+        if (is_plant(ew))
+        {
+
             total = 4;
+
             float min_ao = 1;
             float max_light = 0;
-            for (int a = 0; a < 6; a++) {
-                for (int b = 0; b < 4; b++) {
+
+            for (int a = 0; a < 6; a++)
+            {
+
+                for (int b = 0; b < 4; b++)
+                {
+
                     min_ao = MIN(min_ao, ao[a][b]);
                     max_light = MAX(max_light, light[a][b]);
+
                 }
+
             }
+
             float rotation = simplex2(ex, ez, 4, 0.5, 2) * 360;
-            make_plant(
-                data + offset, min_ao, max_light,
-                ex, ey, ez, 0.5, ew, rotation);
+
+            make_plant(data + offset, min_ao, max_light, ex, ey, ez, 0.5, ew, rotation);
+
         }
-        else {
-            make_cube(
-                data + offset, ao, light,
-                f1, f2, f3, f4, f5, f6,
-                ex, ey, ez, 0.5, ew);
+
+        else
+        {
+
+            make_cube(data + offset, ao, light, f1, f2, f3, f4, f5, f6, ex, ey, ez, 0.5, ew);
+
         }
+
         offset += total * 60;
+
     } END_MAP_FOR_EACH;
 
     free(opaque);
@@ -1113,51 +1210,87 @@ void compute_chunk(WorkerItem *item) {
     item->maxy = maxy;
     item->faces = faces;
     item->data = data;
+
 }
 
-void generate_chunk(Chunk *chunk, WorkerItem *item) {
+void generate_chunk(Chunk *chunk, WorkerItem *item)
+{
+
     chunk->miny = item->miny;
     chunk->maxy = item->maxy;
     chunk->faces = item->faces;
+
     del_buffer(chunk->buffer);
+
     chunk->buffer = gen_faces(10, item->faces, item->data);
+
     gen_sign_buffer(chunk);
+
 }
 
-void gen_chunk_buffer(Chunk *chunk) {
+void gen_chunk_buffer(Chunk *chunk)
+{
+
     WorkerItem _item;
     WorkerItem *item = &_item;
+
     item->p = chunk->p;
     item->q = chunk->q;
-    for (int dp = -1; dp <= 1; dp++) {
-        for (int dq = -1; dq <= 1; dq++) {
+
+    for (int dp = -1; dp <= 1; dp++)
+    {
+
+        for (int dq = -1; dq <= 1; dq++)
+        {
+
             Chunk *other = chunk;
-            if (dp || dq) {
+
+            if (dp || dq)
                 other = find_chunk(chunk->p + dp, chunk->q + dq);
-            }
-            if (other) {
+
+            if (other)
+            {
+
                 item->block_maps[dp + 1][dq + 1] = &other->map;
                 item->light_maps[dp + 1][dq + 1] = &other->lights;
+
             }
-            else {
+
+            else
+            {
+
                 item->block_maps[dp + 1][dq + 1] = 0;
                 item->light_maps[dp + 1][dq + 1] = 0;
+
             }
+
         }
+
     }
+
     compute_chunk(item);
     generate_chunk(chunk, item);
+
     chunk->dirty = 0;
+
 }
 
-void createworld(Map *map, int p, int q) {
+void createworld(Map *map, int p, int q)
+{
+
     int pad = 1;
-    for (int dx = -pad; dx < CHUNK_SIZE + pad; dx++) {
-        for (int dz = -pad; dz < CHUNK_SIZE + pad; dz++) {
+
+    for (int dx = -pad; dx < CHUNK_SIZE + pad; dx++)
+    {
+
+        for (int dz = -pad; dz < CHUNK_SIZE + pad; dz++)
+        {
+
             int flag = 1;
-            if (dx < 0 || dz < 0 || dx >= CHUNK_SIZE || dz >= CHUNK_SIZE) {
+
+            if (dx < 0 || dz < 0 || dx >= CHUNK_SIZE || dz >= CHUNK_SIZE)
                 flag = -1;
-            }
+
             int x = p * CHUNK_SIZE + dx;
             int z = q * CHUNK_SIZE + dz;
             float f = simplex2(x * 0.01, z * 0.01, 4, 0.5, 2);
@@ -1166,65 +1299,95 @@ void createworld(Map *map, int p, int q) {
             int h = f * mh;
             int w = 1;
             int t = 12;
-            if (h <= t) {
+
+            if (h <= t)
+            {
+
                 h = t;
                 w = 2;
+
             }
+
             // sand and grass terrain
-            for (int y = 0; y < h; y++) {
+            for (int y = 0; y < h; y++)
                 map_set(map, x, y, z, w * flag);
-            }
-            if (w == 1) {
-                if (SHOW_PLANTS) {
+
+            if (w == 1)
+            {
+
+                if (SHOW_PLANTS)
+                {
+
                     // grass
                     if (simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6) {
                         map_set(map, x, h, z, 17 * flag);
                     }
+
                     // flowers
                     if (simplex2(x * 0.05, -z * 0.05, 4, 0.8, 2) > 0.7) {
                         int w = 18 + simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
                         map_set(map, x, h, z, w * flag);
                     }
+
                 }
+
                 // trees
                 int ok = SHOW_TREES;
-                if (dx - 4 < 0 || dz - 4 < 0 ||
-                    dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
-                {
+
+                if (dx - 4 < 0 || dz - 4 < 0 || dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
                     ok = 0;
-                }
-                if (ok && simplex2(x, z, 6, 0.5, 2) > 0.84) {
-                    for (int y = h + 3; y < h + 8; y++) {
-                        for (int ox = -3; ox <= 3; ox++) {
-                            for (int oz = -3; oz <= 3; oz++) {
-                                int d = (ox * ox) + (oz * oz) +
-                                    (y - (h + 4)) * (y - (h + 4));
-                                if (d < 11) {
-                                    map_set(map, x + ox, y, z + oz, 15);
-                                }
-                            }
-                        }
-                    }
-                    for (int y = h; y < h + 7; y++) {
-                        map_set(map, x, y, z, 5);
-                    }
-                }
-            }
-            // clouds
-            if (SHOW_CLOUDS) {
-                for (int y = 64; y < 72; y++) {
-                    if (simplex3(
-                        x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
+
+                if (ok && simplex2(x, z, 6, 0.5, 2) > 0.84)
+                {
+
+                    for (int y = h + 3; y < h + 8; y++)
                     {
-                        map_set(map, x, y, z, 16 * flag);
+
+                        for (int ox = -3; ox <= 3; ox++)
+                        {
+
+                            for (int oz = -3; oz <= 3; oz++)
+                            {
+
+                                int d = (ox * ox) + (oz * oz) + (y - (h + 4)) * (y - (h + 4));
+
+                                if (d < 11)
+                                    map_set(map, x + ox, y, z + oz, 15);
+
+                            }
+
+                        }
+
                     }
+
+                    for (int y = h; y < h + 7; y++)
+                        map_set(map, x, y, z, 5);
+
                 }
+
             }
+
+            // clouds
+            if (SHOW_CLOUDS)
+            {
+
+                for (int y = 64; y < 72; y++)
+                {
+
+                    if (simplex3(x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
+                        map_set(map, x, y, z, 16 * flag);
+
+                }
+
+            }
+
         }
+
     }
+
 }
 
-void load_chunk(WorkerItem *item)
+void chunk_load(WorkerItem *item)
 {
 
     createworld(item->block_maps[1][1], item->p, item->q);
@@ -1252,6 +1415,7 @@ void init_chunk(Chunk *chunk, int p, int q)
 
     map_alloc(&chunk->map, dx, dy, dz, 0x7fff);
     map_alloc(&chunk->lights, dx, dy, dz, 0xf);
+
 }
 
 void create_chunk(Chunk *chunk, int p, int q)
@@ -1267,234 +1431,402 @@ void create_chunk(Chunk *chunk, int p, int q)
     item->block_maps[1][1] = &chunk->map;
     item->light_maps[1][1] = &chunk->lights;
 
-    load_chunk(item);
+    chunk_load(item);
 
 }
 
-void delete_chunks() {
+void delete_chunks()
+{
+
     int count = g->chunk_count;
+
     State *s1 = &g->players->state;
     State *s2 = &(g->players + g->observe1)->state;
     State *s3 = &(g->players + g->observe2)->state;
     State *states[3] = {s1, s2, s3};
-    for (int i = 0; i < count; i++) {
+
+    for (int i = 0; i < count; i++)
+    {
+
         Chunk *chunk = g->chunks + i;
+
         int delete = 1;
-        for (int j = 0; j < 3; j++) {
+
+        for (int j = 0; j < 3; j++)
+        {
+
             State *s = states[j];
             int p = chunked(s->x);
             int q = chunked(s->z);
-            if (chunk_distance(chunk, p, q) < g->delete_radius) {
+
+            if (chunk_distance(chunk, p, q) < g->delete_radius)
+            {
+
                 delete = 0;
+
                 break;
+
             }
+
         }
-        if (delete) {
+
+        if (delete)
+        {
+
             map_free(&chunk->map);
             map_free(&chunk->lights);
             sign_list_free(&chunk->signs);
             del_buffer(chunk->buffer);
             del_buffer(chunk->sign_buffer);
+
             Chunk *other = g->chunks + (--count);
+
             memcpy(chunk, other, sizeof(Chunk));
+
         }
+
     }
+
     g->chunk_count = count;
+
 }
 
-void delete_all_chunks() {
-    for (int i = 0; i < g->chunk_count; i++) {
+void delete_all_chunks()
+{
+
+    for (int i = 0; i < g->chunk_count; i++)
+    {
+
         Chunk *chunk = g->chunks + i;
+
         map_free(&chunk->map);
         map_free(&chunk->lights);
         sign_list_free(&chunk->signs);
         del_buffer(chunk->buffer);
         del_buffer(chunk->sign_buffer);
+
     }
+
     g->chunk_count = 0;
+
 }
 
-void check_workers() {
-    for (int i = 0; i < WORKERS; i++) {
+void check_workers()
+{
+
+    for (int i = 0; i < WORKERS; i++)
+    {
+
         Worker *worker = g->workers + i;
+
         mtx_lock(&worker->mtx);
-        if (worker->state == WORKER_DONE) {
+
+        if (worker->state == WORKER_DONE)
+        {
+
             WorkerItem *item = &worker->item;
             Chunk *chunk = find_chunk(item->p, item->q);
-            if (chunk) {
-                if (item->load) {
+
+            if (chunk)
+            {
+
+                if (item->load)
+                {
+
                     Map *block_map = item->block_maps[1][1];
                     Map *light_map = item->light_maps[1][1];
+
                     map_free(&chunk->map);
                     map_free(&chunk->lights);
                     map_copy(&chunk->map, block_map);
                     map_copy(&chunk->lights, light_map);
+
                 }
+
                 generate_chunk(chunk, item);
+
             }
-            for (int a = 0; a < 3; a++) {
-                for (int b = 0; b < 3; b++) {
+
+            for (int a = 0; a < 3; a++)
+            {
+
+                for (int b = 0; b < 3; b++)
+                {
+
                     Map *block_map = item->block_maps[a][b];
                     Map *light_map = item->light_maps[a][b];
-                    if (block_map) {
+
+                    if (block_map)
+                    {
+
                         map_free(block_map);
                         free(block_map);
+
                     }
-                    if (light_map) {
+
+                    if (light_map)
+                    {
+
                         map_free(light_map);
                         free(light_map);
+
                     }
+
                 }
+
             }
+
             worker->state = WORKER_IDLE;
+
         }
+
         mtx_unlock(&worker->mtx);
+
     }
+
 }
 
-void force_chunks(Player *player) {
+void force_chunks(Player *player)
+{
+
     State *s = &player->state;
     int p = chunked(s->x);
     int q = chunked(s->z);
     int r = 1;
-    for (int dp = -r; dp <= r; dp++) {
-        for (int dq = -r; dq <= r; dq++) {
+
+    for (int dp = -r; dp <= r; dp++)
+    {
+
+        for (int dq = -r; dq <= r; dq++)
+        {
+
             int a = p + dp;
             int b = q + dq;
             Chunk *chunk = find_chunk(a, b);
-            if (chunk) {
-                if (chunk->dirty) {
+
+            if (chunk)
+            {
+
+                if (chunk->dirty)
                     gen_chunk_buffer(chunk);
-                }
+
             }
-            else if (g->chunk_count < MAX_CHUNKS) {
+
+            else if (g->chunk_count < MAX_CHUNKS)
+            {
+
                 chunk = g->chunks + g->chunk_count++;
+
                 create_chunk(chunk, a, b);
                 gen_chunk_buffer(chunk);
+
             }
+
         }
+
     }
+
 }
 
-void ensure_chunks_worker(Player *player, Worker *worker) {
+void ensure_chunks_worker(Player *player, Worker *worker)
+{
+
     State *s = &player->state;
     float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+
+    set_matrix_3d(matrix, g->width, g->height, s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+
     float planes[6][4];
+
     frustum_planes(planes, g->render_radius, matrix);
+
     int p = chunked(s->x);
     int q = chunked(s->z);
     int r = g->create_radius;
+
     int start = 0x0fffffff;
     int best_score = start;
     int best_a = 0;
     int best_b = 0;
-    for (int dp = -r; dp <= r; dp++) {
-        for (int dq = -r; dq <= r; dq++) {
+
+    for (int dp = -r; dp <= r; dp++)
+    {
+
+        for (int dq = -r; dq <= r; dq++)
+        {
+
             int a = p + dp;
             int b = q + dq;
             int index = (ABS(a) ^ ABS(b)) % WORKERS;
-            if (index != worker->index) {
+
+            if (index != worker->index)
                 continue;
-            }
+
             Chunk *chunk = find_chunk(a, b);
-            if (chunk && !chunk->dirty) {
+
+            if (chunk && !chunk->dirty)
                 continue;
-            }
+
             int distance = MAX(ABS(dp), ABS(dq));
             int invisible = !chunk_visible(planes, a, b, 0, 256);
             int priority = 0;
-            if (chunk) {
+
+            if (chunk)
                 priority = chunk->buffer && chunk->dirty;
-            }
+
             int score = (invisible << 24) | (priority << 16) | distance;
-            if (score < best_score) {
+
+            if (score < best_score)
+            {
+
                 best_score = score;
                 best_a = a;
                 best_b = b;
+
             }
+
         }
+
     }
-    if (best_score == start) {
+
+    if (best_score == start)
         return;
-    }
+
     int a = best_a;
     int b = best_b;
     int load = 0;
     Chunk *chunk = find_chunk(a, b);
-    if (!chunk) {
+
+    if (!chunk)
+    {
+
         load = 1;
-        if (g->chunk_count < MAX_CHUNKS) {
+
+        if (g->chunk_count < MAX_CHUNKS)
+        {
+
             chunk = g->chunks + g->chunk_count++;
+
             init_chunk(chunk, a, b);
+
         }
-        else {
+
+        else
+        {
+
             return;
+
         }
+
     }
+
     WorkerItem *item = &worker->item;
+
     item->p = chunk->p;
     item->q = chunk->q;
     item->load = load;
-    for (int dp = -1; dp <= 1; dp++) {
-        for (int dq = -1; dq <= 1; dq++) {
+
+    for (int dp = -1; dp <= 1; dp++)
+    {
+
+        for (int dq = -1; dq <= 1; dq++)
+        {
+
             Chunk *other = chunk;
-            if (dp || dq) {
+
+            if (dp || dq)
                 other = find_chunk(chunk->p + dp, chunk->q + dq);
-            }
-            if (other) {
+
+            if (other)
+            {
+
                 Map *block_map = malloc(sizeof(Map));
+
                 map_copy(block_map, &other->map);
+
                 Map *light_map = malloc(sizeof(Map));
+
                 map_copy(light_map, &other->lights);
+
                 item->block_maps[dp + 1][dq + 1] = block_map;
                 item->light_maps[dp + 1][dq + 1] = light_map;
+
             }
-            else {
+
+            else
+            {
+
                 item->block_maps[dp + 1][dq + 1] = 0;
                 item->light_maps[dp + 1][dq + 1] = 0;
+
             }
+
         }
+
     }
+
     chunk->dirty = 0;
     worker->state = WORKER_BUSY;
+
     cnd_signal(&worker->cnd);
+
 }
 
-void ensure_chunks(Player *player) {
+void ensure_chunks(Player *player)
+{
+
     check_workers();
     force_chunks(player);
-    for (int i = 0; i < WORKERS; i++) {
+
+    for (int i = 0; i < WORKERS; i++)
+    {
+
         Worker *worker = g->workers + i;
+
         mtx_lock(&worker->mtx);
-        if (worker->state == WORKER_IDLE) {
+
+        if (worker->state == WORKER_IDLE)
             ensure_chunks_worker(player, worker);
-        }
+
         mtx_unlock(&worker->mtx);
+
     }
+    
 }
 
-int worker_run(void *arg) {
+int worker_run(void *arg)
+{
+
     Worker *worker = (Worker *)arg;
+
     int running = 1;
-    while (running) {
-        mtx_lock(&worker->mtx);
-        while (worker->state != WORKER_BUSY) {
-            cnd_wait(&worker->cnd, &worker->mtx);
-        }
-        mtx_unlock(&worker->mtx);
+
+    while (running)
+    {
+
         WorkerItem *item = &worker->item;
-        if (item->load) {
-            load_chunk(item);
-        }
+
+        mtx_lock(&worker->mtx);
+
+        while (worker->state != WORKER_BUSY)
+            cnd_wait(&worker->cnd, &worker->mtx);
+
+        mtx_unlock(&worker->mtx);
+
+        if (item->load)
+            chunk_load(item);
+
         compute_chunk(item);
         mtx_lock(&worker->mtx);
+
         worker->state = WORKER_DONE;
+
         mtx_unlock(&worker->mtx);
+
     }
+
     return 0;
+
 }
 
 void unset_sign(int x, int y, int z) {
@@ -2303,21 +2635,6 @@ void on_mouse_button(GLFWwindow *window, int button, int action, int mods) {
     }
 }
 
-void create_window() {
-    int window_width = WINDOW_WIDTH;
-    int window_height = WINDOW_HEIGHT;
-    GLFWmonitor *monitor = NULL;
-    if (FULLSCREEN) {
-        int mode_count;
-        monitor = glfwGetPrimaryMonitor();
-        const GLFWvidmode *modes = glfwGetVideoModes(monitor, &mode_count);
-        window_width = modes[mode_count - 1].width;
-        window_height = modes[mode_count - 1].height;
-    }
-    g->window = glfwCreateWindow(
-        window_width, window_height, "Craft", monitor, NULL);
-}
-
 void handle_mouse_input() {
     int exclusive =
         glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
@@ -2411,37 +2728,74 @@ void handle_movement(double dt) {
     }
 }
 
-void reset_model() {
+void reset_model()
+{
+
     memset(g->chunks, 0, sizeof(Chunk) * MAX_CHUNKS);
+
     g->chunk_count = 0;
+
     memset(g->players, 0, sizeof(Player) * MAX_PLAYERS);
+
     g->player_count = 0;
     g->observe1 = 0;
     g->observe2 = 0;
     g->flying = 0;
     g->item_index = 0;
+
     memset(g->typing_buffer, 0, sizeof(char) * MAX_TEXT_LENGTH);
+
     g->typing = 0;
+
     memset(g->messages, 0, sizeof(char) * MAX_MESSAGES * MAX_TEXT_LENGTH);
+
     g->message_index = 0;
+
     g->day_length = DAY_LENGTH;
+
     glfwSetTime(g->day_length / 3.0);
+
     g->time_changed = 1;
+
 }
 
-int main(int argc, char **argv) {
-    // INITIALIZATION //
+int main(int argc, char **argv)
+{
+
+    int window_width = WINDOW_WIDTH;
+    int window_height = WINDOW_HEIGHT;
+
     srand(time(NULL));
     rand();
 
-    // WINDOW INITIALIZATION //
-    if (!glfwInit()) {
+    if (!glfwInit())
         return -1;
+
+    GLFWmonitor *monitor = NULL;
+
+    if (FULLSCREEN)
+    {
+
+        int mode_count;
+
+        monitor = glfwGetPrimaryMonitor();
+
+        const GLFWvidmode *modes = glfwGetVideoModes(monitor, &mode_count);
+
+        window_width = modes[mode_count - 1].width;
+        window_height = modes[mode_count - 1].height;
+
     }
-    create_window();
-    if (!g->window) {
+
+    g->window = glfwCreateWindow(window_width, window_height, "Craft", monitor, NULL);
+
+    if (!g->window)
+    {
+
         glfwTerminate();
+
         return -1;
+
     }
 
     glfwMakeContextCurrent(g->window);
@@ -2452,16 +2806,14 @@ int main(int argc, char **argv) {
     glfwSetMouseButtonCallback(g->window, on_mouse_button);
     glfwSetScrollCallback(g->window, on_scroll);
 
-    if (glewInit() != GLEW_OK) {
+    if (glewInit() != GLEW_OK)
         return -1;
-    }
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
     glLogicOp(GL_INVERT);
     glClearColor(0, 0, 0, 1);
 
-    // LOAD TEXTURES //
     GLuint texture;
     glGenTextures(1, &texture);
     glActiveTexture(GL_TEXTURE0);
@@ -2496,15 +2848,13 @@ int main(int argc, char **argv) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     load_png_texture("textures/sign.png");
 
-    // LOAD SHADERS //
     Attrib block_attrib = {0};
     Attrib line_attrib = {0};
     Attrib text_attrib = {0};
     Attrib sky_attrib = {0};
     GLuint program;
 
-    program = load_program(
-        "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
+    program = load_program("shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
     block_attrib.program = program;
     block_attrib.position = glGetAttribLocation(program, "position");
     block_attrib.normal = glGetAttribLocation(program, "normal");
@@ -2518,14 +2868,12 @@ int main(int argc, char **argv) {
     block_attrib.camera = glGetUniformLocation(program, "camera");
     block_attrib.timer = glGetUniformLocation(program, "timer");
 
-    program = load_program(
-        "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
+    program = load_program("shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
     line_attrib.program = program;
     line_attrib.position = glGetAttribLocation(program, "position");
     line_attrib.matrix = glGetUniformLocation(program, "matrix");
 
-    program = load_program(
-        "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
+    program = load_program("shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
     text_attrib.program = program;
     text_attrib.position = glGetAttribLocation(program, "position");
     text_attrib.uv = glGetAttribLocation(program, "uv");
@@ -2533,8 +2881,7 @@ int main(int argc, char **argv) {
     text_attrib.sampler = glGetUniformLocation(program, "sampler");
     text_attrib.extra1 = glGetUniformLocation(program, "is_sign");
 
-    program = load_program(
-        "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
+    program = load_program("shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
     sky_attrib.program = program;
     sky_attrib.position = glGetAttribLocation(program, "position");
     sky_attrib.normal = glGetAttribLocation(program, "normal");
@@ -2548,14 +2895,18 @@ int main(int argc, char **argv) {
     g->delete_radius = DELETE_CHUNK_RADIUS;
     g->sign_radius = RENDER_SIGN_RADIUS;
 
-    // INITIALIZE WORKER THREADS
-    for (int i = 0; i < WORKERS; i++) {
+    for (int i = 0; i < WORKERS; i++)
+    {
+
         Worker *worker = g->workers + i;
+
         worker->index = i;
         worker->state = WORKER_IDLE;
+
         mtx_init(&worker->mtx, mtx_plain);
         cnd_init(&worker->cnd);
         thrd_create(&worker->thrd, worker_run, worker);
+
     }
 
     int running = 1;
@@ -2563,14 +2914,14 @@ int main(int argc, char **argv) {
     while (running)
     {
 
-        // LOCAL VARIABLES //
         reset_model();
+
         FPS fps = {0, 0, 0};
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
-
         Player *me = g->players;
         State *s = &g->players->state;
+
         me->id = 0;
         me->name[0] = '\0';
         me->buffer = 0;
@@ -2580,23 +2931,31 @@ int main(int argc, char **argv) {
 
         s->y = highest_block(s->x, s->z) + 2;
 
-        // BEGIN MAIN LOOP //
         double previous = glfwGetTime();
-        while (1) {
-            // WINDOW SIZE AND SCALE //
+
+        while (1)
+        {
+
             g->scale = get_scale_factor();
+
             glfwGetFramebufferSize(g->window, &g->width, &g->height);
             glViewport(0, 0, g->width, g->height);
 
-            // FRAME RATE //
-            if (g->time_changed) {
+            if (g->time_changed)
+            {
+
                 g->time_changed = 0;
                 last_update = glfwGetTime();
+
                 memset(&fps, 0, sizeof(fps));
+
             }
+
             update_fps(&fps);
+
             double now = glfwGetTime();
             double dt = now - previous;
+
             dt = MIN(dt, 0.2);
             dt = MAX(dt, 0.0);
             previous = now;
@@ -2604,89 +2963,111 @@ int main(int argc, char **argv) {
             handle_mouse_input();
             handle_movement(dt);
 
-            if (now - last_update > 0.1) {
+            if (now - last_update > 0.1)
                 last_update = now;
-            }
 
-            // PREPARE TO RENDER //
             g->observe1 = g->observe1 % g->player_count;
             g->observe2 = g->observe2 % g->player_count;
+
             delete_chunks();
             del_buffer(me->buffer);
+
             me->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
-            for (int i = 1; i < g->player_count; i++) {
+
+            for (int i = 1; i < g->player_count; i++)
                 interpolate_player(g->players + i);
-            }
+
             Player *player = g->players + g->observe1;
 
-            // RENDER 3-D SCENE //
             glClear(GL_COLOR_BUFFER_BIT);
             glClear(GL_DEPTH_BUFFER_BIT);
             render_sky(&sky_attrib, player, sky_buffer);
             glClear(GL_DEPTH_BUFFER_BIT);
+
             int face_count = render_chunks(&block_attrib, player);
+
             render_signs(&text_attrib, player);
             render_sign(&text_attrib, player);
             render_players(&block_attrib, player);
 
-            // RENDER HUD //
             glClear(GL_DEPTH_BUFFER_BIT);
+
             if (SHOW_CROSSHAIRS) {
                 render_crosshairs(&line_attrib);
             }
+
             if (SHOW_ITEM) {
                 render_item(&block_attrib);
             }
 
-            // RENDER TEXT //
             char text_buffer[1024];
             float ts = 12 * g->scale;
             float tx = ts / 2;
             float ty = g->height - ts;
-            if (SHOW_INFO_TEXT) {
+
+            if (SHOW_INFO_TEXT)
+            {
+
                 int hour = time_of_day() * 24;
                 char am_pm = hour < 12 ? 'a' : 'p';
+
                 hour = hour % 12;
                 hour = hour ? hour : 12;
-                snprintf(
-                    text_buffer, 1024,
-                    "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps",
-                    chunked(s->x), chunked(s->z), s->x, s->y, s->z,
-                    g->player_count, g->chunk_count,
-                    face_count * 2, hour, am_pm, fps.fps);
+
+                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(s->x), chunked(s->z), s->x, s->y, s->z, g->player_count, g->chunk_count, face_count * 2, hour, am_pm, fps.fps);
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+
                 ty -= ts * 2;
-            }
-            if (SHOW_CHAT_TEXT) {
-                for (int i = 0; i < MAX_MESSAGES; i++) {
-                    int index = (g->message_index + i) % MAX_MESSAGES;
-                    if (strlen(g->messages[index])) {
-                        render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts,
-                            g->messages[index]);
-                        ty -= ts * 2;
-                    }
-                }
-            }
-            if (g->typing) {
-                snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
-                render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
-                ty -= ts * 2;
-            }
-            if (SHOW_PLAYER_NAMES) {
-                if (player != me) {
-                    render_text(&text_attrib, ALIGN_CENTER,
-                        g->width / 2, ts, ts, player->name);
-                }
-                Player *other = player_crosshair(player);
-                if (other) {
-                    render_text(&text_attrib, ALIGN_CENTER,
-                        g->width / 2, g->height / 2 - ts - 24, ts,
-                        other->name);
-                }
+
             }
 
-            // RENDER PICTURE IN PICTURE //
-            if (g->observe2) {
+            if (SHOW_CHAT_TEXT)
+            {
+
+                for (int i = 0; i < MAX_MESSAGES; i++)
+                {
+
+                    int index = (g->message_index + i) % MAX_MESSAGES;
+
+                    if (strlen(g->messages[index]))
+                    {
+
+                        render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, g->messages[index]);
+
+                        ty -= ts * 2;
+
+                    }
+
+                }
+
+            }
+
+            if (g->typing)
+            {
+
+                snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
+                render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+
+                ty -= ts * 2;
+
+            }
+
+            if (SHOW_PLAYER_NAMES)
+            {
+
+                if (player != me)
+                    render_text(&text_attrib, ALIGN_CENTER, g->width / 2, ts, ts, player->name);
+
+                Player *other = player_crosshair(player);
+
+                if (other)
+                    render_text(&text_attrib, ALIGN_CENTER, g->width / 2, g->height / 2 - ts - 24, ts, other->name);
+
+            }
+
+            if (g->observe2)
+            {
+
                 player = g->players + g->observe2;
 
                 int pw = 256 * g->scale;
@@ -2714,31 +3095,44 @@ int main(int argc, char **argv) {
                 render_signs(&text_attrib, player);
                 render_players(&block_attrib, player);
                 glClear(GL_DEPTH_BUFFER_BIT);
-                if (SHOW_PLAYER_NAMES) {
-                    render_text(&text_attrib, ALIGN_CENTER,
-                        pw / 2, ts, ts, player->name);
-                }
+
+                if (SHOW_PLAYER_NAMES)
+                    render_text(&text_attrib, ALIGN_CENTER, pw / 2, ts, ts, player->name);
+
             }
 
-            // SWAP AND POLL //
             glfwSwapBuffers(g->window);
             glfwPollEvents();
-            if (glfwWindowShouldClose(g->window)) {
+
+            if (glfwWindowShouldClose(g->window))
+            {
+
                 running = 0;
+
                 break;
+
             }
-            if (g->mode_changed) {
+
+            if (g->mode_changed)
+            {
+
                 g->mode_changed = 0;
+
                 break;
+
             }
+
         }
 
-        // SHUTDOWN //
         del_buffer(sky_buffer);
         delete_all_chunks();
         delete_all_players();
+
     }
 
     glfwTerminate();
+
     return 0;
+
 }
+
