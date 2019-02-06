@@ -14,7 +14,6 @@
 #include "sign.h"
 #include "tinycthread.h"
 #include "util.h"
-#include "world.h"
 
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128
@@ -1151,47 +1150,125 @@ void gen_chunk_buffer(Chunk *chunk) {
     chunk->dirty = 0;
 }
 
-void map_set_func(int x, int y, int z, int w, void *arg) {
-    Map *map = (Map *)arg;
-    map_set(map, x, y, z, w);
+void createworld(Map *map, int p, int q) {
+    int pad = 1;
+    for (int dx = -pad; dx < CHUNK_SIZE + pad; dx++) {
+        for (int dz = -pad; dz < CHUNK_SIZE + pad; dz++) {
+            int flag = 1;
+            if (dx < 0 || dz < 0 || dx >= CHUNK_SIZE || dz >= CHUNK_SIZE) {
+                flag = -1;
+            }
+            int x = p * CHUNK_SIZE + dx;
+            int z = q * CHUNK_SIZE + dz;
+            float f = simplex2(x * 0.01, z * 0.01, 4, 0.5, 2);
+            float g = simplex2(-x * 0.01, -z * 0.01, 2, 0.9, 2);
+            int mh = g * 32 + 16;
+            int h = f * mh;
+            int w = 1;
+            int t = 12;
+            if (h <= t) {
+                h = t;
+                w = 2;
+            }
+            // sand and grass terrain
+            for (int y = 0; y < h; y++) {
+                map_set(map, x, y, z, w * flag);
+            }
+            if (w == 1) {
+                if (SHOW_PLANTS) {
+                    // grass
+                    if (simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6) {
+                        map_set(map, x, h, z, 17 * flag);
+                    }
+                    // flowers
+                    if (simplex2(x * 0.05, -z * 0.05, 4, 0.8, 2) > 0.7) {
+                        int w = 18 + simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
+                        map_set(map, x, h, z, w * flag);
+                    }
+                }
+                // trees
+                int ok = SHOW_TREES;
+                if (dx - 4 < 0 || dz - 4 < 0 ||
+                    dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
+                {
+                    ok = 0;
+                }
+                if (ok && simplex2(x, z, 6, 0.5, 2) > 0.84) {
+                    for (int y = h + 3; y < h + 8; y++) {
+                        for (int ox = -3; ox <= 3; ox++) {
+                            for (int oz = -3; oz <= 3; oz++) {
+                                int d = (ox * ox) + (oz * oz) +
+                                    (y - (h + 4)) * (y - (h + 4));
+                                if (d < 11) {
+                                    map_set(map, x + ox, y, z + oz, 15);
+                                }
+                            }
+                        }
+                    }
+                    for (int y = h; y < h + 7; y++) {
+                        map_set(map, x, y, z, 5);
+                    }
+                }
+            }
+            // clouds
+            if (SHOW_CLOUDS) {
+                for (int y = 64; y < 72; y++) {
+                    if (simplex3(
+                        x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
+                    {
+                        map_set(map, x, y, z, 16 * flag);
+                    }
+                }
+            }
+        }
+    }
 }
 
-void load_chunk(WorkerItem *item) {
-    int p = item->p;
-    int q = item->q;
-    Map *block_map = item->block_maps[1][1];
-    create_world(p, q, map_set_func, block_map);
+void load_chunk(WorkerItem *item)
+{
+
+    createworld(item->block_maps[1][1], item->p, item->q);
+
 }
 
-void init_chunk(Chunk *chunk, int p, int q) {
+void init_chunk(Chunk *chunk, int p, int q)
+{
+
+    int dx, dy, dz;
+
     chunk->p = p;
     chunk->q = q;
     chunk->faces = 0;
     chunk->sign_faces = 0;
     chunk->buffer = 0;
     chunk->sign_buffer = 0;
+
     dirty_chunk(chunk);
-    SignList *signs = &chunk->signs;
-    sign_list_alloc(signs, 16);
-    Map *block_map = &chunk->map;
-    Map *light_map = &chunk->lights;
-    int dx = p * CHUNK_SIZE - 1;
-    int dy = 0;
-    int dz = q * CHUNK_SIZE - 1;
-    map_alloc(block_map, dx, dy, dz, 0x7fff);
-    map_alloc(light_map, dx, dy, dz, 0xf);
+    sign_list_alloc(&chunk->signs, 16);
+
+    dx = p * CHUNK_SIZE - 1;
+    dy = 0;
+    dz = q * CHUNK_SIZE - 1;
+
+    map_alloc(&chunk->map, dx, dy, dz, 0x7fff);
+    map_alloc(&chunk->lights, dx, dy, dz, 0xf);
 }
 
-void create_chunk(Chunk *chunk, int p, int q) {
+void create_chunk(Chunk *chunk, int p, int q)
+{
+
     init_chunk(chunk, p, q);
 
     WorkerItem _item;
     WorkerItem *item = &_item;
+
     item->p = chunk->p;
     item->q = chunk->q;
     item->block_maps[1][1] = &chunk->map;
     item->light_maps[1][1] = &chunk->lights;
+
     load_chunk(item);
+
 }
 
 void delete_chunks() {
