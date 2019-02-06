@@ -6,34 +6,6 @@
 #include "matrix.h"
 #include "util.h"
 
-char *load_file(const char *path)
-{
-
-    FILE *file = fopen(path, "rb");
-
-    if (!file)
-    {
-
-        fprintf(stderr, "fopen %s failed: %d %s\n", path, errno, strerror(errno));
-        exit(1);
-
-    }
-
-    fseek(file, 0, SEEK_END);
-
-    int length = ftell(file);
-
-    rewind(file);
-
-    char *data = calloc(length + 1, sizeof(char));
-
-    fread(data, 1, length, file);
-    fclose(file);
-
-    return data;
-
-}
-
 GLuint gen_buffer(GLsizei size, GLfloat *data)
 {
 
@@ -72,16 +44,28 @@ GLuint gen_faces(int components, int faces, GLfloat *data)
 
 }
 
-GLuint make_shader(GLenum type, const char *source)
+GLuint load_shader(GLenum type, const char *path)
 {
 
-    GLuint shader = glCreateShader(type);
-
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-
+    FILE *file;
+    char data[4096];
+    const GLchar *pdata = data;
+    GLuint shader;
     GLint status;
+    int count;
 
+    file = fopen(path, "rb");
+
+    count = fread(data, 1, 4096, file);
+
+    data[count] = '\0';
+
+    fclose(file);
+
+    shader = glCreateShader(type);
+
+    glShaderSource(shader, 1, &pdata, NULL);
+    glCompileShader(shader);
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
 
     if (status == GL_FALSE)
@@ -100,18 +84,6 @@ GLuint make_shader(GLenum type, const char *source)
     }
 
     return shader;
-
-}
-
-GLuint load_shader(GLenum type, const char *path)
-{
-
-    char *data = load_file(path);
-    GLuint result = make_shader(type, data);
-
-    free(data);
-
-    return result;
 
 }
 
