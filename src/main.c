@@ -85,7 +85,6 @@ typedef struct {
 
 typedef struct {
     int id;
-    char name[MAX_NAME_LENGTH];
     State state;
     State state1;
     State state2;
@@ -124,8 +123,6 @@ typedef struct {
     char messages[MAX_MESSAGES][MAX_TEXT_LENGTH];
     int width;
     int height;
-    int observe1;
-    int observe2;
     int flying;
     int item_index;
     int scale;
@@ -1441,32 +1438,22 @@ void delete_chunks()
     int count = g->chunk_count;
 
     State *s1 = &g->players->state;
-    State *s2 = &(g->players + g->observe1)->state;
-    State *s3 = &(g->players + g->observe2)->state;
-    State *states[3] = {s1, s2, s3};
 
     for (int i = 0; i < count; i++)
     {
 
         Chunk *chunk = g->chunks + i;
 
+        int p = chunked(s1->x);
+        int q = chunked(s1->z);
         int delete = 1;
 
-        for (int j = 0; j < 3; j++)
+        if (chunk_distance(chunk, p, q) < g->delete_radius)
         {
 
-            State *s = states[j];
-            int p = chunked(s->x);
-            int q = chunked(s->z);
+            delete = 0;
 
-            if (chunk_distance(chunk, p, q) < g->delete_radius)
-            {
-
-                delete = 0;
-
-                break;
-
-            }
+            break;
 
         }
 
@@ -2540,12 +2527,6 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
                 g->item_index = item_count - 1;
             }
         }
-        if (key == CRAFT_KEY_OBSERVE) {
-            g->observe1 = (g->observe1 + 1) % g->player_count;
-        }
-        if (key == CRAFT_KEY_OBSERVE_INSET) {
-            g->observe2 = (g->observe2 + 1) % g->player_count;
-        }
     }
 }
 
@@ -2738,8 +2719,6 @@ void reset_model()
     memset(g->players, 0, sizeof(Player) * MAX_PLAYERS);
 
     g->player_count = 0;
-    g->observe1 = 0;
-    g->observe2 = 0;
     g->flying = 0;
     g->item_index = 0;
 
@@ -2923,7 +2902,6 @@ int main(int argc, char **argv)
         State *s = &g->players->state;
 
         me->id = 0;
-        me->name[0] = '\0';
         me->buffer = 0;
         g->player_count = 1;
 
@@ -2966,9 +2944,6 @@ int main(int argc, char **argv)
             if (now - last_update > 0.1)
                 last_update = now;
 
-            g->observe1 = g->observe1 % g->player_count;
-            g->observe2 = g->observe2 % g->player_count;
-
             delete_chunks();
             del_buffer(me->buffer);
 
@@ -2977,7 +2952,7 @@ int main(int argc, char **argv)
             for (int i = 1; i < g->player_count; i++)
                 interpolate_player(g->players + i);
 
-            Player *player = g->players + g->observe1;
+            Player *player = g->players;
 
             glClear(GL_COLOR_BUFFER_BIT);
             glClear(GL_DEPTH_BUFFER_BIT);
@@ -3049,55 +3024,6 @@ int main(int argc, char **argv)
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
                 ty -= ts * 2;
-
-            }
-
-            if (SHOW_PLAYER_NAMES)
-            {
-
-                if (player != me)
-                    render_text(&text_attrib, ALIGN_CENTER, g->width / 2, ts, ts, player->name);
-
-                Player *other = player_crosshair(player);
-
-                if (other)
-                    render_text(&text_attrib, ALIGN_CENTER, g->width / 2, g->height / 2 - ts - 24, ts, other->name);
-
-            }
-
-            if (g->observe2)
-            {
-
-                player = g->players + g->observe2;
-
-                int pw = 256 * g->scale;
-                int ph = 256 * g->scale;
-                int offset = 32 * g->scale;
-                int pad = 3 * g->scale;
-                int sw = pw + pad * 2;
-                int sh = ph + pad * 2;
-
-                glEnable(GL_SCISSOR_TEST);
-                glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
-                glClear(GL_COLOR_BUFFER_BIT);
-                glDisable(GL_SCISSOR_TEST);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                glViewport(g->width - pw - offset, offset, pw, ph);
-
-                g->width = pw;
-                g->height = ph;
-                g->ortho = 0;
-                g->fov = 65;
-
-                render_sky(&sky_attrib, player, sky_buffer);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                render_chunks(&block_attrib, player);
-                render_signs(&text_attrib, player);
-                render_players(&block_attrib, player);
-                glClear(GL_DEPTH_BUFFER_BIT);
-
-                if (SHOW_PLAYER_NAMES)
-                    render_text(&text_attrib, ALIGN_CENTER, pw / 2, ts, ts, player->name);
 
             }
 
