@@ -16,7 +16,6 @@
 #include "util.h"
 
 #define MAX_CHUNKS 8192
-#define MAX_PLAYERS 128
 #define WORKERS 4
 #define MAX_TEXT_LENGTH 256
 #define ALIGN_LEFT 0
@@ -142,8 +141,7 @@ typedef struct
     int render_radius;
     int delete_radius;
     int sign_radius;
-    Player players[MAX_PLAYERS];
-    int player_count;
+    Player player;
     int typing;
     char typing_buffer[MAX_TEXT_LENGTH];
     int message_index;
@@ -520,83 +518,12 @@ static void draw_plant(Attrib *attrib, GLuint buffer)
 
 }
 
-static void draw_player(Attrib *attrib, Player *player)
-{
-
-    draw_cube(attrib, player->buffer);
-
-}
-
-static void update_player(Player *player, float x, float y, float z, float rx, float ry, int interpolate)
-{
-
-    if (interpolate)
-    {
-
-        State *s1 = &player->state1;
-        State *s2 = &player->state2;
-
-        memcpy(s1, s2, sizeof(State));
-
-        s2->x = x; s2->y = y; s2->z = z; s2->rx = rx; s2->ry = ry;
-        s2->t = glfwGetTime();
-
-        if (s2->rx - s1->rx > PI) {
-            s1->rx += 2 * PI;
-        }
-
-        if (s1->rx - s2->rx > PI) {
-            s1->rx -= 2 * PI;
-        }
-
-    }
-
-    else
-    {
-
-        State *s = &player->state;
-
-        s->x = x; s->y = y; s->z = z; s->rx = rx; s->ry = ry;
-
-        del_buffer(player->buffer);
-
-        player->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
-
-    }
-
-}
-
-static void interpolate_player(Player *player)
-{
-
-    State *s1 = &player->state1;
-    State *s2 = &player->state2;
-
-    float t1 = s2->t - s1->t;
-    float t2 = glfwGetTime() - s2->t;
-
-    t1 = MIN(t1, 1);
-    t1 = MAX(t1, 0.1);
-
-    float p = MIN(t2 / t1, 1);
-
-    update_player(player, s1->x + (s2->x - s1->x) * p, s1->y + (s2->y - s1->y) * p, s1->z + (s2->z - s1->z) * p, s1->rx + (s2->rx - s1->rx) * p, s1->ry + (s2->ry - s1->ry) * p, 0);
-
-}
-
 static void delete_all_players()
 {
 
-    for (int i = 0; i < g->player_count; i++)
-    {
+    Player *player = &g->player;
 
-        Player *player = g->players + i;
-
-        del_buffer(player->buffer);
-
-    }
-
-    g->player_count = 0;
+    del_buffer(player->buffer);
 
 }
 
@@ -1702,7 +1629,7 @@ static void delete_chunks()
 
     int count = g->chunk_count;
 
-    State *s1 = &g->players->state;
+    State *s1 = &g->player.state;
 
     for (int i = 0; i < count; i++)
     {
@@ -2382,31 +2309,6 @@ static void render_sign(Attrib *attrib, Player *player)
 
 }
 
-static void render_players(Attrib *attrib, Player *player)
-{
-
-    State *s = &player->state;
-    float matrix[16];
-
-    set_matrix_3d(matrix, g->width, g->height, s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
-    glUseProgram(attrib->program);
-    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform3f(attrib->camera, s->x, s->y, s->z);
-    glUniform1i(attrib->sampler, 0);
-    glUniform1f(attrib->timer, time_of_day());
-
-    for (int i = 0; i < g->player_count; i++)
-    {
-
-        Player *other = g->players + i;
-
-        if (other != player)
-            draw_player(attrib, other);
-
-    }
-
-}
-
 static void render_sky(Attrib *attrib, Player *player, GLuint buffer)
 {
 
@@ -2887,7 +2789,7 @@ static void parse_command(const char *buffer, int forward)
 static void on_light()
 {
 
-    State *s = &g->players->state;
+    State *s = &g->player.state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
 
@@ -2899,7 +2801,7 @@ static void on_light()
 static void on_left_click()
 {
 
-    State *s = &g->players->state;
+    State *s = &g->player.state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
 
@@ -2919,7 +2821,7 @@ static void on_left_click()
 void on_right_click()
 {
 
-    State *s = &g->players->state;
+    State *s = &g->player.state;
     int hx, hy, hz;
     int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
 
@@ -2941,7 +2843,7 @@ void on_right_click()
 void on_middle_click()
 {
 
-    State *s = &g->players->state;
+    State *s = &g->player.state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
 
@@ -3027,7 +2929,7 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods)
                 if (g->typing_buffer[0] == CRAFT_KEY_SIGN)
                 {
 
-                    Player *player = g->players;
+                    Player *player = &g->player;
                     int x, y, z, face;
 
                     if (hit_test_face(player, &x, &y, &z, &face))
@@ -3268,7 +3170,7 @@ void handle_mouse_input()
     int exclusive = glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
     static double px = 0;
     static double py = 0;
-    State *s = &g->players->state;
+    State *s = &g->player.state;
 
     if (exclusive && (px || py))
     {
@@ -3312,7 +3214,7 @@ void handle_movement(double dt)
 {
 
     static float dy = 0;
-    State *s = &g->players->state;
+    State *s = &g->player.state;
     int sz = 0;
     int sx = 0;
     
@@ -3402,9 +3304,8 @@ void reset_model()
 
     g->chunk_count = 0;
 
-    memset(g->players, 0, sizeof(Player) * MAX_PLAYERS);
+    memset(&g->player, 0, sizeof(Player));
 
-    g->player_count = 0;
     g->flying = 0;
     g->item_index = 0;
 
@@ -3584,12 +3485,11 @@ int main(int argc, char **argv)
         FPS fps = {0, 0, 0};
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
-        Player *me = g->players;
-        State *s = &g->players->state;
+        Player *me = &g->player;
+        State *s = &g->player.state;
 
         me->id = 0;
         me->buffer = 0;
-        g->player_count = 1;
 
         force_chunks(me);
 
@@ -3646,10 +3546,7 @@ int main(int argc, char **argv)
 
             me->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
 
-            for (int i = 1; i < g->player_count; i++)
-                interpolate_player(g->players + i);
-
-            Player *player = g->players;
+            Player *player = &g->player;
 
             glClear(GL_COLOR_BUFFER_BIT);
             glClear(GL_DEPTH_BUFFER_BIT);
@@ -3660,17 +3557,9 @@ int main(int argc, char **argv)
 
             render_signs(&text_attrib, player);
             render_sign(&text_attrib, player);
-            render_players(&block_attrib, player);
-
             glClear(GL_DEPTH_BUFFER_BIT);
-
-            if (SHOW_CROSSHAIRS) {
-                render_crosshairs(&line_attrib);
-            }
-
-            if (SHOW_ITEM) {
-                render_item(&block_attrib);
-            }
+            render_crosshairs(&line_attrib);
+            render_item(&block_attrib);
 
             char text_buffer[1024];
             float ts = 12 * g->scale;
@@ -3686,7 +3575,7 @@ int main(int argc, char **argv)
                 hour = hour % 12;
                 hour = hour ? hour : 12;
 
-                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(s->x), chunked(s->z), s->x, s->y, s->z, g->player_count, g->chunk_count, face_count * 2, hour, am_pm, fps.fps);
+                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(s->x), chunked(s->z), s->x, s->y, s->z, 1, g->chunk_count, face_count * 2, hour, am_pm, fps.fps);
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
                 ty -= ts * 2;
