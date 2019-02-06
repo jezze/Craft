@@ -29,6 +29,15 @@
 typedef struct
 {
 
+    unsigned int fps;
+    unsigned int frames;
+    double since;
+
+} FPS;
+
+typedef struct
+{
+
     Map map;
     Map lights;
     SignList signs;
@@ -3236,9 +3245,20 @@ int main(int argc, char **argv)
 
             }
 
-            update_fps(&fps);
+            fps.frames++;
 
             double now = glfwGetTime();
+            double elapsed = now - fps.since;
+
+            if (elapsed >= 1)
+            {
+
+                fps.fps = round(fps.frames / elapsed);
+                fps.frames = 0;
+                fps.since = now;
+
+            }
+
             double dt = now - previous;
 
             dt = MIN(dt, 0.2);

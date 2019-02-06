@@ -19,16 +19,6 @@
     #define LOG(...)
 #endif
 
-typedef struct {
-    unsigned int fps;
-    unsigned int frames;
-    double since;
-} FPS;
-
-int rand_int(int n);
-double rand_double();
-void update_fps(FPS *fps);
-
 GLuint gen_buffer(GLsizei size, GLfloat *data);
 void del_buffer(GLuint buffer);
 GLfloat *malloc_faces(int components, int faces);
