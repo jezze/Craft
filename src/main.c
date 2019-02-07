@@ -49,7 +49,6 @@ typedef struct
 
     int p;
     int q;
-    int load;
     Map *block_maps[3][3];
     Map *light_maps[3][3];
     int miny;
@@ -1384,12 +1383,11 @@ static void delete_all_chunks()
 
 }
 
-static void force_chunks(Player *player)
+static void force_chunks(Player *player, int r)
 {
 
     int p = chunked(player->x);
     int q = chunked(player->z);
-    int r = 1;
 
     for (int dp = -r; dp <= r; dp++)
     {
@@ -1540,7 +1538,7 @@ static int render_chunks(Attrib *attrib, Player *player)
 
     int result = 0;
 
-    force_chunks(player);
+    force_chunks(player, 1);
 
     int p = chunked(player->x);
     int q = chunked(player->z);
@@ -2708,7 +2706,7 @@ int main(int argc, char **argv)
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
 
-        force_chunks(&g->player);
+        force_chunks(&g->player, 1);
 
         g->player.y = highest_block(g->player.x, g->player.z) + 2;
 
