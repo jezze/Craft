@@ -51,7 +51,6 @@ static void refresh(struct mtwist_state *state)
 
     value1 = MTWIST_COMBINE_BITS(value2, state->vectors[MTWIST_VECTORS - 1]);
     *current = MTWIST_MATRIX_MULTIPLY(current[MTWIST_VECTORS - MTWIST_RECURRENCE], value1);
-    state->current = MTWIST_VECTORS;
 
 }
 
@@ -60,12 +59,11 @@ void mtwist_seed1(struct mtwist_state *state, unsigned int seed)
 
     int i;
 
+    state->current = 0;
     state->vectors[MTWIST_VECTORS - 1] = seed & 0xFFFFFFFF;
 
     for (i = MTWIST_VECTORS - 2; i >= 0; i--)
         state->vectors[i] = (69069 * state->vectors[i + 1]) & 0xFFFFFFFF;
-
-    state->current = MTWIST_VECTORS;
 
     refresh(state);
 
@@ -76,6 +74,7 @@ void mtwist_seed2(struct mtwist_state *state, unsigned int seed)
 
     int i;
 
+    state->current = 0;
     state->vectors[MTWIST_VECTORS - 1] = seed & 0xFFFFFFFF;
 
     for (i = MTWIST_VECTORS - 2; i >= 0; i--)
@@ -90,8 +89,6 @@ void mtwist_seed2(struct mtwist_state *state, unsigned int seed)
 
     }
 
-    state->current = MTWIST_VECTORS;
-
     refresh(state);
 
 }
@@ -99,12 +96,14 @@ void mtwist_seed2(struct mtwist_state *state, unsigned int seed)
 unsigned int mtwist_rand(struct mtwist_state *state)
 {
 
-    unsigned int value = state->vectors[--state->current];
+    unsigned int value = state->vectors[state->current];
 
     value ^= (value >> 11);
     value ^= (value << 7) & 0x9D2C5680;
     value ^= (value << 15) & 0xEFC60000;
     value ^= (value >> 18);
+
+    state->current = (state->current + 1) % MTWIST_VECTORS;
 
     return value;
 
