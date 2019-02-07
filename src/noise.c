@@ -287,11 +287,7 @@ void noise_seed(struct mtwist_state *state)
     for (int i = 255; i > 0; i--)
     {
 
-        int j;
-        int n = i + 1;
-
-        while (n <= (j = mtwist_rand(state) / (RAND_MAX / n)));
-
+        int j = mtwist_rand(state) % (i + 1);
         unsigned char a = PERM[i];
         unsigned char b = PERM[j];
 
