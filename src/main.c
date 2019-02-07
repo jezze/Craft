@@ -12,7 +12,6 @@
 #include "map.h"
 #include "matrix.h"
 #include "noise.h"
-#include "tinycthread.h"
 #include "util.h"
 
 #define MAX_CHUNKS 8192
