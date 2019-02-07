@@ -16,10 +16,6 @@ void make_plant(
     float *data, float ao, float light,
     float px, float py, float pz, float n, int w, float rotation);
 
-void make_player(
-    float *data,
-    float x, float y, float z, float rx, float ry);
-
 void make_character(
     float *data,
     float x, float y, float n, float m, char c);

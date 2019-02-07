@@ -108,7 +108,6 @@ typedef struct
     State state;
     State state1;
     State state2;
-    GLuint buffer;
 
 } Player;
 
@@ -348,17 +347,6 @@ static GLuint gen_plant_buffer(float x, float y, float z, float n, int w)
     make_plant(data, ao, light, x, y, z, n, w, 45);
 
     return gen_faces(10, 4, data);
-
-}
-
-static GLuint gen_player_buffer(float x, float y, float z, float rx, float ry)
-{
-
-    GLfloat *data = malloc_faces(10, 6);
-
-    make_player(data, x, y, z, rx, ry);
-
-    return gen_faces(10, 6, data);
 
 }
 
@@ -3521,9 +3509,6 @@ int main(int argc, char **argv)
                 last_update = now;
 
             delete_chunks();
-            del_buffer(g->player.buffer);
-
-            g->player.buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
 
             Player *player = &g->player;
 
@@ -3617,7 +3602,6 @@ int main(int argc, char **argv)
 
         del_buffer(sky_buffer);
         delete_all_chunks();
-        del_buffer(g->player.buffer);
 
     }
 
