@@ -145,6 +145,7 @@ typedef struct
     Block block1;
     Block copy0;
     Block copy1;
+    FPS fps;
 
 } Model;
 
@@ -3015,7 +3016,6 @@ int main(int argc, char **argv)
 
         reset_model();
 
-        FPS fps = {0, 0, 0};
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
 
@@ -3039,21 +3039,21 @@ int main(int argc, char **argv)
                 g->time_changed = 0;
                 last_update = glfwGetTime();
 
-                memset(&fps, 0, sizeof(fps));
+                memset(&g->fps, 0, sizeof(FPS));
 
             }
 
-            fps.frames++;
+            g->fps.frames++;
 
             double now = glfwGetTime();
-            double elapsed = now - fps.since;
+            double elapsed = now - g->fps.since;
 
             if (elapsed >= 1)
             {
 
-                fps.fps = round(fps.frames / elapsed);
-                fps.frames = 0;
-                fps.since = now;
+                g->fps.fps = round(g->fps.frames / elapsed);
+                g->fps.frames = 0;
+                g->fps.since = now;
 
             }
 
@@ -3098,7 +3098,7 @@ int main(int argc, char **argv)
                 hour = hour % 12;
                 hour = hour ? hour : 12;
 
-                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(player->x), chunked(player->z), player->x, player->y, player->z, 1, g->chunk_count, face_count * 2, hour, am_pm, fps.fps);
+                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(player->x), chunked(player->z), player->x, player->y, player->z, 1, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
                 ty -= ts * 2;
