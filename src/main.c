@@ -1207,22 +1207,18 @@ static void createworld(Map *map, int p, int q)
             float g = noise_simplex2(-x * 0.01, -z * 0.01, 2, 0.9, 2);
             int mh = g * 32 + 16;
             int h = f * mh;
-            int w = 1;
             int t = 12;
 
             if (h <= t)
-            {
-
                 h = t;
-                w = 2;
 
-            }
+            for (int y = 0; y < t; y++)
+                map_set(map, x, y, z, 2 * flag);
 
-            // sand and grass terrain
-            for (int y = 0; y < h; y++)
-                map_set(map, x, y, z, w * flag);
+            for (int y = t; y < h; y++)
+                map_set(map, x, y, z, 1 * flag);
 
-            if (w == 1)
+            if (h > t)
             {
 
                 if (SHOW_PLANTS)
