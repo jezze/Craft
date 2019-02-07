@@ -232,7 +232,7 @@ static float noise3(float x, float y, float z)
 
 }
 
-float noice_simplex2(float x, float y, int octaves, float persistence, float lacunarity)
+float noise_simplex2(float x, float y, int octaves, float persistence, float lacunarity)
 {
 
     float freq = 1.0f;
@@ -255,7 +255,7 @@ float noice_simplex2(float x, float y, int octaves, float persistence, float lac
     
 }
 
-float noice_simplex3(float x, float y, float z, int octaves, float persistence, float lacunarity)
+float noise_simplex3(float x, float y, float z, int octaves, float persistence, float lacunarity)
 {
 
     float freq = 1.0f;
@@ -278,7 +278,7 @@ float noice_simplex3(float x, float y, float z, int octaves, float persistence, 
 
 }
 
-void noice_seed(struct mtwist_state *state)
+void noise_seed(struct mtwist_state *state)
 {
 
     for (int i = 0; i < 256; i++)

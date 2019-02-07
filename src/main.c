@@ -1098,7 +1098,7 @@ static void compute_chunk(WorkerItem *item)
 
             }
 
-            float rotation = noice_simplex2(ex, ez, 4, 0.5, 2) * 360;
+            float rotation = noise_simplex2(ex, ez, 4, 0.5, 2) * 360;
 
             make_plant(data + offset, min_ao, max_light, ex, ey, ez, 0.5, ew, rotation);
 
@@ -1203,8 +1203,8 @@ static void createworld(Map *map, int p, int q)
 
             int x = p * CHUNK_SIZE + dx;
             int z = q * CHUNK_SIZE + dz;
-            float f = noice_simplex2(x * 0.01, z * 0.01, 4, 0.5, 2);
-            float g = noice_simplex2(-x * 0.01, -z * 0.01, 2, 0.9, 2);
+            float f = noise_simplex2(x * 0.01, z * 0.01, 4, 0.5, 2);
+            float g = noise_simplex2(-x * 0.01, -z * 0.01, 2, 0.9, 2);
             int mh = g * 32 + 16;
             int h = f * mh;
             int w = 1;
@@ -1229,7 +1229,7 @@ static void createworld(Map *map, int p, int q)
                 {
 
                     // grass
-                    if (noice_simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6)
+                    if (noise_simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6)
                     {
 
                         map_set(map, x, h, z, 17 * flag);
@@ -1237,10 +1237,10 @@ static void createworld(Map *map, int p, int q)
                     }
 
                     // flowers
-                    if (noice_simplex2(x * 0.05, -z * 0.05, 4, 0.8, 2) > 0.7)
+                    if (noise_simplex2(x * 0.05, -z * 0.05, 4, 0.8, 2) > 0.7)
                     {
 
-                        int w = 18 + noice_simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
+                        int w = 18 + noise_simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
 
                         map_set(map, x, h, z, w * flag);
 
@@ -1254,7 +1254,7 @@ static void createworld(Map *map, int p, int q)
                 if (dx - 4 < 0 || dz - 4 < 0 || dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
                     ok = 0;
 
-                if (ok && noice_simplex2(x, z, 6, 0.5, 2) > 0.84)
+                if (ok && noise_simplex2(x, z, 6, 0.5, 2) > 0.84)
                 {
 
                     for (int y = h + 3; y < h + 8; y++)
@@ -1291,7 +1291,7 @@ static void createworld(Map *map, int p, int q)
                 for (int y = 64; y < 72; y++)
                 {
 
-                    if (noice_simplex3(x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
+                    if (noise_simplex3(x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
                         map_set(map, x, y, z, 16 * flag);
 
                 }
@@ -2887,7 +2887,7 @@ int main(int argc, char **argv)
 */
 
     mtwist_seed1(&state, 1234);
-    noice_seed(&state);
+    noise_seed(&state);
 
     if (!glfwInit())
         return -1;
