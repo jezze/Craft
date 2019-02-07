@@ -103,7 +103,6 @@ typedef struct
     GLFWwindow *window;
     Chunk chunks[MAX_CHUNKS];
     int chunk_count;
-    int create_radius;
     int render_radius;
     int delete_radius;
     Player player;
@@ -1531,7 +1530,7 @@ static int render_chunks(Attrib *attrib, Player *player)
 
     int result = 0;
 
-    load_chunks(player, 1);
+    load_chunks(player, g->render_radius);
 
     int p = chunked(player->x);
     int q = chunked(player->z);
@@ -1985,7 +1984,6 @@ static void parse_command(const char *buffer, int forward)
         if (radius >= 1 && radius <= 24)
         {
 
-            g->create_radius = radius;
             g->render_radius = radius;
             g->delete_radius = radius + 4;
 
@@ -2685,9 +2683,8 @@ int main(int argc, char **argv)
     sky_attrib.sampler = glGetUniformLocation(program, "sampler");
     sky_attrib.timer = glGetUniformLocation(program, "timer");
 
-    g->create_radius = CREATE_CHUNK_RADIUS;
     g->render_radius = RENDER_CHUNK_RADIUS;
-    g->delete_radius = DELETE_CHUNK_RADIUS;
+    g->delete_radius = RENDER_CHUNK_RADIUS + 4;
 
     int running = 1;
 
@@ -2699,7 +2696,7 @@ int main(int argc, char **argv)
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
 
-        load_chunks(&g->player, 1);
+        load_chunks(&g->player, g->render_radius);
 
         g->player.y = highest_block(g->player.x, g->player.z) + 2;
 

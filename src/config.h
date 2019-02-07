@@ -36,9 +36,7 @@
 #define CRAFT_KEY_COMMAND '/'
 
 // advanced parameters
-#define CREATE_CHUNK_RADIUS 10
-#define RENDER_CHUNK_RADIUS 10
-#define DELETE_CHUNK_RADIUS 14
+#define RENDER_CHUNK_RADIUS 2
 #define CHUNK_SIZE 32
 
 #endif
