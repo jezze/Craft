@@ -1104,19 +1104,6 @@ static void compute_chunk(WorkerItem *item)
 
 }
 
-static void generate_chunk(Chunk *chunk, WorkerItem *item)
-{
-
-    chunk->miny = item->miny;
-    chunk->maxy = item->maxy;
-    chunk->faces = item->faces;
-
-    del_buffer(chunk->buffer);
-
-    chunk->buffer = gen_faces(10, item->faces, item->data);
-
-}
-
 static void gen_chunk_buffer(Chunk *chunk)
 {
 
@@ -1157,8 +1144,14 @@ static void gen_chunk_buffer(Chunk *chunk)
     }
 
     compute_chunk(&item);
-    generate_chunk(chunk, &item);
 
+    chunk->miny = item.miny;
+    chunk->maxy = item.maxy;
+    chunk->faces = item.faces;
+
+    del_buffer(chunk->buffer);
+
+    chunk->buffer = gen_faces(10, item.faces, item.data);
     chunk->dirty = 0;
 
 }
@@ -1383,7 +1376,7 @@ static void delete_all_chunks()
 
 }
 
-static void force_chunks(Player *player, int r)
+static void load_chunks(Player *player, int r)
 {
 
     int p = chunked(player->x);
@@ -1538,7 +1531,7 @@ static int render_chunks(Attrib *attrib, Player *player)
 
     int result = 0;
 
-    force_chunks(player, 1);
+    load_chunks(player, 1);
 
     int p = chunked(player->x);
     int q = chunked(player->z);
@@ -2706,7 +2699,7 @@ int main(int argc, char **argv)
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
 
-        force_chunks(&g->player, 1);
+        load_chunks(&g->player, 1);
 
         g->player.y = highest_block(g->player.x, g->player.z) + 2;
 
