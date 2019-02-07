@@ -460,20 +460,6 @@ static void draw_lines(Attrib *attrib, GLuint buffer, int components, int count)
 
 }
 
-static void draw_chunk(Attrib *attrib, Chunk *chunk)
-{
-
-    draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
-
-}
-
-static void draw_item(Attrib *attrib, GLuint buffer, int count)
-{
-
-    draw_triangles_3d_ao(attrib, buffer, count);
-
-}
-
 static void draw_text(Attrib *attrib, GLuint buffer, int length)
 {
 
@@ -501,27 +487,6 @@ static void draw_sign(Attrib *attrib, GLuint buffer, int length)
     glPolygonOffset(-8, -1024);
     draw_triangles_3d_text(attrib, buffer, length * 6);
     glDisable(GL_POLYGON_OFFSET_FILL);
-
-}
-
-static void draw_cube(Attrib *attrib, GLuint buffer)
-{
-
-    draw_item(attrib, buffer, 36);
-
-}
-
-static void draw_plant(Attrib *attrib, GLuint buffer)
-{
-
-    draw_item(attrib, buffer, 24);
-
-}
-
-static void delete_all_players()
-{
-
-    del_buffer(g->player.buffer);
 
 }
 
@@ -2246,7 +2211,7 @@ static int render_chunks(Attrib *attrib, Player *player)
             continue;
         }
 
-        draw_chunk(attrib, chunk);
+        draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
 
         result += chunk->faces;
 
@@ -2381,7 +2346,7 @@ static void render_item(Attrib *attrib)
 
         GLuint buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
 
-        draw_plant(attrib, buffer);
+        draw_triangles_3d_ao(attrib, buffer, 24);
         del_buffer(buffer);
 
     }
@@ -2391,7 +2356,7 @@ static void render_item(Attrib *attrib)
 
         GLuint buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
 
-        draw_cube(attrib, buffer);
+        draw_triangles_3d_ao(attrib, buffer, 36);
         del_buffer(buffer);
 
     }
@@ -3652,7 +3617,7 @@ int main(int argc, char **argv)
 
         del_buffer(sky_buffer);
         delete_all_chunks();
-        delete_all_players();
+        del_buffer(g->player.buffer);
 
     }
 
