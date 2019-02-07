@@ -31,9 +31,8 @@
 #define CRAFT_KEY_FLY GLFW_KEY_TAB
 #define CRAFT_KEY_ITEM_NEXT 'E'
 #define CRAFT_KEY_ITEM_PREV 'R'
-#define CRAFT_KEY_ZOOM GLFW_KEY_LEFT_SHIFT
+#define CRAFT_KEY_ZOOM 'Z'
 #define CRAFT_KEY_ORTHO 'F'
-#define CRAFT_KEY_CHAT 't'
 #define CRAFT_KEY_COMMAND '/'
 
 // advanced parameters

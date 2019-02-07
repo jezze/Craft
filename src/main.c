@@ -2605,14 +2605,6 @@ void on_char(GLFWwindow *window, unsigned int u)
     else
     {
 
-        if (u == CRAFT_KEY_CHAT)
-        {
-
-            g->typing = 1;
-            g->typing_buffer[0] = '\0';
-
-        }
-
         if (u == CRAFT_KEY_COMMAND)
         {
 
