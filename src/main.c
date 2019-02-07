@@ -99,16 +99,6 @@ typedef struct
     float ry;
     float t;
 
-} State;
-
-typedef struct
-{
-
-    int id;
-    State state;
-    State state1;
-    State state2;
-
 } Player;
 
 typedef struct
@@ -689,15 +679,14 @@ static int hit_test(int previous, float x, float y, float z, float rx, float ry,
 static int hit_test_face(Player *player, int *x, int *y, int *z, int *face)
 {
 
-    State *s = &player->state;
-    int w = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, x, y, z);
+    int w = hit_test(0, player->x, player->y, player->z, player->rx, player->ry, x, y, z);
 
     if (is_obstacle(w))
     {
 
         int hx, hy, hz;
 
-        hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+        hit_test(1, player->x, player->y, player->z, player->rx, player->ry, &hx, &hy, &hz);
 
         int dx = hx - *x;
         int dy = hy - *y;
@@ -742,7 +731,7 @@ static int hit_test_face(Player *player, int *x, int *y, int *z, int *face)
         if (dx == 0 && dy == 1 && dz == 0)
         {
 
-            int degrees = roundf(DEGREES(atan2f(s->x - hx, s->z - hz)));
+            int degrees = roundf(DEGREES(atan2f(player->x - hx, player->z - hz)));
 
             if (degrees < 0)
                 degrees += 360;
@@ -1600,15 +1589,13 @@ static void delete_chunks()
 
     int count = g->chunk_count;
 
-    State *s1 = &g->player.state;
-
     for (int i = 0; i < count; i++)
     {
 
         Chunk *chunk = g->chunks + i;
 
-        int p = chunked(s1->x);
-        int q = chunked(s1->z);
+        int p = chunked(g->player.x);
+        int q = chunked(g->player.z);
         int delete = 1;
 
         if (chunk_distance(chunk, p, q) < g->delete_radius)
@@ -1739,9 +1726,8 @@ static void check_workers()
 static void force_chunks(Player *player)
 {
 
-    State *s = &player->state;
-    int p = chunked(s->x);
-    int q = chunked(s->z);
+    int p = chunked(player->x);
+    int q = chunked(player->z);
     int r = 1;
 
     for (int dp = -r; dp <= r; dp++)
@@ -1781,17 +1767,16 @@ static void force_chunks(Player *player)
 static void ensure_chunks_worker(Player *player, Worker *worker)
 {
 
-    State *s = &player->state;
     float matrix[16];
 
-    set_matrix_3d(matrix, g->width, g->height, s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d(matrix, g->width, g->height, player->x, player->y, player->z, player->rx, player->ry, g->fov, g->ortho, g->render_radius);
 
     float planes[6][4];
 
     frustum_planes(planes, g->render_radius, matrix);
 
-    int p = chunked(s->x);
-    int q = chunked(s->z);
+    int p = chunked(player->x);
+    int q = chunked(player->z);
     int r = g->create_radius;
 
     int start = 0x0fffffff;
@@ -2160,23 +2145,22 @@ static int render_chunks(Attrib *attrib, Player *player)
 {
 
     int result = 0;
-    State *s = &player->state;
 
     ensure_chunks(player);
 
-    int p = chunked(s->x);
-    int q = chunked(s->z);
+    int p = chunked(player->x);
+    int q = chunked(player->z);
     float light = get_daylight();
     float matrix[16];
 
-    set_matrix_3d(matrix, g->width, g->height, s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d(matrix, g->width, g->height, player->x, player->y, player->z, player->rx, player->ry, g->fov, g->ortho, g->render_radius);
 
     float planes[6][4];
 
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform3f(attrib->camera, s->x, s->y, s->z);
+    glUniform3f(attrib->camera, player->x, player->y, player->z);
     glUniform1i(attrib->sampler, 0);
     glUniform1i(attrib->extra1, 2);
     glUniform1f(attrib->extra2, light);
@@ -2211,12 +2195,11 @@ static int render_chunks(Attrib *attrib, Player *player)
 static void render_signs(Attrib *attrib, Player *player)
 {
 
-    State *s = &player->state;
-    int p = chunked(s->x);
-    int q = chunked(s->z);
+    int p = chunked(player->x);
+    int q = chunked(player->z);
     float matrix[16];
 
-    set_matrix_3d(matrix, g->width, g->height, s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d(matrix, g->width, g->height, player->x, player->y, player->z, player->rx, player->ry, g->fov, g->ortho, g->render_radius);
 
     float planes[6][4];
 
@@ -2257,9 +2240,8 @@ static void render_sign(Attrib *attrib, Player *player)
     if (!hit_test_face(player, &x, &y, &z, &face))
         return;
 
-    State *s = &player->state;
     float matrix[16];
-    set_matrix_3d(matrix, g->width, g->height, s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d(matrix, g->width, g->height, player->x, player->y, player->z, player->rx, player->ry, g->fov, g->ortho, g->render_radius);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 3);
@@ -2283,10 +2265,9 @@ static void render_sign(Attrib *attrib, Player *player)
 static void render_sky(Attrib *attrib, Player *player, GLuint buffer)
 {
 
-    State *s = &player->state;
     float matrix[16];
 
-    set_matrix_3d(matrix, g->width, g->height, 0, 0, 0, s->rx, s->ry, g->fov, 0, g->render_radius);
+    set_matrix_3d(matrix, g->width, g->height, 0, 0, 0, player->rx, player->ry, g->fov, 0, g->render_radius);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 2);
@@ -2760,9 +2741,8 @@ static void parse_command(const char *buffer, int forward)
 static void on_light()
 {
 
-    State *s = &g->player.state;
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_destructable(hw))
         toggle_light(hx, hy, hz);
@@ -2772,9 +2752,8 @@ static void on_light()
 static void on_left_click()
 {
 
-    State *s = &g->player.state;
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_destructable(hw))
     {
@@ -2792,14 +2771,13 @@ static void on_left_click()
 void on_right_click()
 {
 
-    State *s = &g->player.state;
     int hx, hy, hz;
-    int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(1, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_obstacle(hw))
     {
 
-        if (!player_intersects_block(2, s->x, s->y, s->z, hx, hy, hz))
+        if (!player_intersects_block(2, g->player.x, g->player.y, g->player.z, hx, hy, hz))
         {
 
             set_block(hx, hy, hz, items[g->item_index]);
@@ -2814,9 +2792,8 @@ void on_right_click()
 void on_middle_click()
 {
 
-    State *s = &g->player.state;
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
 
     for (int i = 0; i < item_count; i++)
     {
@@ -3140,7 +3117,6 @@ void handle_mouse_input()
     int exclusive = glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
     static double px = 0;
     static double py = 0;
-    State *s = &g->player.state;
 
     if (exclusive && (px || py))
     {
@@ -3151,21 +3127,21 @@ void handle_mouse_input()
 
         float m = 0.0025;
 
-        s->rx += (mx - px) * m;
+        g->player.rx += (mx - px) * m;
 
         if (INVERT_MOUSE)
-            s->ry += (my - py) * m;
+            g->player.ry += (my - py) * m;
         else
-            s->ry -= (my - py) * m;
+            g->player.ry -= (my - py) * m;
 
-        if (s->rx < 0)
-            s->rx += RADIANS(360);
+        if (g->player.rx < 0)
+            g->player.rx += RADIANS(360);
 
-        if (s->rx >= RADIANS(360))
-            s->rx -= RADIANS(360);
+        if (g->player.rx >= RADIANS(360))
+            g->player.rx -= RADIANS(360);
 
-        s->ry = MAX(s->ry, -RADIANS(90));
-        s->ry = MIN(s->ry, RADIANS(90));
+        g->player.ry = MAX(g->player.ry, -RADIANS(90));
+        g->player.ry = MIN(g->player.ry, RADIANS(90));
         px = mx;
         py = my;
 
@@ -3184,7 +3160,6 @@ void handle_movement(double dt)
 {
 
     static float dy = 0;
-    State *s = &g->player.state;
     int sz = 0;
     int sx = 0;
     
@@ -3200,16 +3175,16 @@ void handle_movement(double dt)
         if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
         if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
         if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
-        if (glfwGetKey(g->window, GLFW_KEY_LEFT)) s->rx -= m;
-        if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) s->rx += m;
-        if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
-        if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
+        if (glfwGetKey(g->window, GLFW_KEY_LEFT)) g->player.rx -= m;
+        if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) g->player.rx += m;
+        if (glfwGetKey(g->window, GLFW_KEY_UP)) g->player.ry += m;
+        if (glfwGetKey(g->window, GLFW_KEY_DOWN)) g->player.ry -= m;
 
     }
 
     float vx, vy, vz;
 
-    get_motion_vector(g->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
+    get_motion_vector(g->flying, sz, sx, g->player.rx, g->player.ry, &vx, &vy, &vz);
 
     if (!g->typing)
     {
@@ -3253,17 +3228,17 @@ void handle_movement(double dt)
 
         }
 
-        s->x += vx;
-        s->y += vy + dy * ut;
-        s->z += vz;
+        g->player.x += vx;
+        g->player.y += vy + dy * ut;
+        g->player.z += vz;
 
-        if (collide(2, &s->x, &s->y, &s->z))
+        if (collide(2, &g->player.x, &g->player.y, &g->player.z))
             dy = 0;
 
     }
 
-    if (s->y < 0)
-        s->y = highest_block(s->x, s->z) + 2;
+    if (g->player.y < 0)
+        g->player.y = highest_block(g->player.x, g->player.z) + 2;
 
 }
 
@@ -3455,11 +3430,10 @@ int main(int argc, char **argv)
         FPS fps = {0, 0, 0};
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
-        State *s = &g->player.state;
 
         force_chunks(&g->player);
 
-        s->y = highest_block(s->x, s->z) + 2;
+        g->player.y = highest_block(g->player.x, g->player.z) + 2;
 
         double previous = glfwGetTime();
 
@@ -3538,7 +3512,7 @@ int main(int argc, char **argv)
                 hour = hour % 12;
                 hour = hour ? hour : 12;
 
-                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(s->x), chunked(s->z), s->x, s->y, s->z, 1, g->chunk_count, face_count * 2, hour, am_pm, fps.fps);
+                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(player->x), chunked(player->z), player->x, player->y, player->z, 1, g->chunk_count, face_count * 2, hour, am_pm, fps.fps);
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
                 ty -= ts * 2;
