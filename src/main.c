@@ -2882,7 +2882,7 @@ int main(int argc, char **argv)
     mtwist_seed1(&state, time(NULL));
 */
 
-    mtwist_seed1(&state, 1234);
+    mtwist_seed1(&state, 42);
     noise_seed(&state);
 
     if (!glfwInit())
