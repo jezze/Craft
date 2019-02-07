@@ -97,7 +97,6 @@ typedef struct
     float z;
     float rx;
     float ry;
-    float t;
 
 } Player;
 
