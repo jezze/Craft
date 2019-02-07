@@ -1385,11 +1385,10 @@ static void generate_chunk(Chunk *chunk, WorkerItem *item)
 static void gen_chunk_buffer(Chunk *chunk)
 {
 
-    WorkerItem _item;
-    WorkerItem *item = &_item;
+    WorkerItem item;
 
-    item->p = chunk->p;
-    item->q = chunk->q;
+    item.p = chunk->p;
+    item.q = chunk->q;
 
     for (int dp = -1; dp <= 1; dp++)
     {
@@ -1405,16 +1404,16 @@ static void gen_chunk_buffer(Chunk *chunk)
             if (other)
             {
 
-                item->block_maps[dp + 1][dq + 1] = &other->map;
-                item->light_maps[dp + 1][dq + 1] = &other->lights;
+                item.block_maps[dp + 1][dq + 1] = &other->map;
+                item.light_maps[dp + 1][dq + 1] = &other->lights;
 
             }
 
             else
             {
 
-                item->block_maps[dp + 1][dq + 1] = 0;
-                item->light_maps[dp + 1][dq + 1] = 0;
+                item.block_maps[dp + 1][dq + 1] = 0;
+                item.light_maps[dp + 1][dq + 1] = 0;
 
             }
 
@@ -1422,8 +1421,8 @@ static void gen_chunk_buffer(Chunk *chunk)
 
     }
 
-    compute_chunk(item);
-    generate_chunk(chunk, item);
+    compute_chunk(&item);
+    generate_chunk(chunk, &item);
 
     chunk->dirty = 0;
 
