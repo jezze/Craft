@@ -47,13 +47,8 @@ typedef struct
 typedef struct
 {
 
-    int p;
-    int q;
     Map *block_maps[3][3];
     Map *light_maps[3][3];
-    int miny;
-    int maxy;
-    int faces;
     GLfloat *data;
 
 } WorkerItem;
@@ -846,15 +841,15 @@ static void light_fill(char *opaque, char *light, int x, int y, int z, int w, in
 
 }
 
-static void compute_chunk(WorkerItem *item)
+static void compute_chunk(Chunk *chunk, WorkerItem *item)
 {
 
     char *opaque = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
     char *light = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
     char *highest = (char *)calloc(XZ_SIZE * XZ_SIZE, sizeof(char));
-    int ox = item->p * CHUNK_SIZE - CHUNK_SIZE - 1;
+    int ox = chunk->p * CHUNK_SIZE - CHUNK_SIZE - 1;
     int oy = -1;
-    int oz = item->q * CHUNK_SIZE - CHUNK_SIZE - 1;
+    int oz = chunk->q * CHUNK_SIZE - CHUNK_SIZE - 1;
     int has_light = 0;
 
     if (SHOW_LIGHTS)
@@ -948,10 +943,9 @@ static void compute_chunk(WorkerItem *item)
 
     Map *map = item->block_maps[1][1];
 
-    // count exposed faces
-    int miny = 256;
-    int maxy = 0;
-    int faces = 0;
+    chunk->miny = 256;
+    chunk->maxy = 0;
+    chunk->faces = 0;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
 
@@ -975,14 +969,13 @@ static void compute_chunk(WorkerItem *item)
         if (is_plant(ew))
             total = 4;
 
-        miny = MIN(miny, ey);
-        maxy = MAX(maxy, ey);
-        faces += total;
+        chunk->miny = MIN(chunk->miny, ey);
+        chunk->maxy = MAX(chunk->maxy, ey);
+        chunk->faces += total;
 
     } END_MAP_FOR_EACH;
 
-    // generate geometry
-    GLfloat *data = malloc_faces(10, faces);
+    item->data = malloc_faces(10, chunk->faces);
     int offset = 0;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
@@ -1077,14 +1070,14 @@ static void compute_chunk(WorkerItem *item)
 
             float rotation = noise_simplex2(ex, ez, 4, 0.5, 2) * 360;
 
-            make_plant(data + offset, min_ao, max_light, ex, ey, ez, 0.5, ew, rotation);
+            make_plant(item->data + offset, min_ao, max_light, ex, ey, ez, 0.5, ew, rotation);
 
         }
 
         else
         {
 
-            make_cube(data + offset, ao, light, f1, f2, f3, f4, f5, f6, ex, ey, ez, 0.5, ew);
+            make_cube(item->data + offset, ao, light, f1, f2, f3, f4, f5, f6, ex, ey, ez, 0.5, ew);
 
         }
 
@@ -1096,20 +1089,12 @@ static void compute_chunk(WorkerItem *item)
     free(light);
     free(highest);
 
-    item->miny = miny;
-    item->maxy = maxy;
-    item->faces = faces;
-    item->data = data;
-
 }
 
 static void gen_chunk_buffer(Chunk *chunk)
 {
 
     WorkerItem item;
-
-    item.p = chunk->p;
-    item.q = chunk->q;
 
     for (int dp = -1; dp <= 1; dp++)
     {
@@ -1142,15 +1127,10 @@ static void gen_chunk_buffer(Chunk *chunk)
 
     }
 
-    compute_chunk(&item);
-
-    chunk->miny = item.miny;
-    chunk->maxy = item.maxy;
-    chunk->faces = item.faces;
-
+    compute_chunk(chunk, &item);
     del_buffer(chunk->buffer);
 
-    chunk->buffer = gen_faces(10, item.faces, item.data);
+    chunk->buffer = gen_faces(10, chunk->faces, item.data);
     chunk->dirty = 0;
 
 }
@@ -1283,12 +1263,10 @@ static void create_chunk(Chunk *chunk, int p, int q)
     map_alloc(&chunk->map, dx, dy, dz, 0x7fff);
     map_alloc(&chunk->lights, dx, dy, dz, 0xf);
 
-    item.p = chunk->p;
-    item.q = chunk->q;
     item.block_maps[1][1] = &chunk->map;
     item.light_maps[1][1] = &chunk->lights;
 
-    createworld(item.block_maps[1][1], item.p, item.q);
+    createworld(item.block_maps[1][1], chunk->p, chunk->q);
 
 }
 
