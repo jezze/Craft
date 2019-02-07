@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include "mtwist.h"
+#include "noise.h"
 
 #define F2 0.3660254037844386f
 #define G2 0.21132486540518713f
@@ -276,10 +278,8 @@ float noice_simplex3(float x, float y, float z, int octaves, float persistence, 
 
 }
 
-void noice_seed(unsigned int x)
+void noice_seed(struct mtwist_state *state)
 {
-
-    srand(x);
 
     for (int i = 0; i < 256; i++)
         PERM[i] = i;
@@ -290,7 +290,7 @@ void noice_seed(unsigned int x)
         int j;
         int n = i + 1;
 
-        while (n <= (j = rand() / (RAND_MAX / n)));
+        while (n <= (j = mtwist_rand(state) / (RAND_MAX / n)));
 
         unsigned char a = PERM[i];
         unsigned char b = PERM[j];

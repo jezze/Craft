@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include "config.h"
+#include "mtwist.h"
 #include "cube.h"
 #include "item.h"
 #include "map.h"
@@ -2877,11 +2878,16 @@ void reset_model()
 int main(int argc, char **argv)
 {
 
+    struct mtwist_state state;
     int window_width = WINDOW_WIDTH;
     int window_height = WINDOW_HEIGHT;
 
-    srand(time(NULL));
-    rand();
+/*
+    mtwist_seed1(&state, time(NULL));
+*/
+
+    mtwist_seed1(&state, 1234);
+    noice_seed(&state);
 
     if (!glfwInit())
         return -1;
