@@ -1194,7 +1194,6 @@ static void createworld(Map *map, int p, int q)
                 if (SHOW_PLANTS)
                 {
 
-                    // grass
                     if (noise_simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6)
                     {
 
@@ -1202,7 +1201,6 @@ static void createworld(Map *map, int p, int q)
 
                     }
 
-                    // flowers
                     if (noise_simplex2(x * 0.05, -z * 0.05, 4, 0.8, 2) > 0.7)
                     {
 
@@ -1214,7 +1212,6 @@ static void createworld(Map *map, int p, int q)
 
                 }
 
-                // trees
                 int ok = SHOW_TREES;
 
                 if (dx - 4 < 0 || dz - 4 < 0 || dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
@@ -1250,7 +1247,6 @@ static void createworld(Map *map, int p, int q)
 
             }
 
-            // clouds
             if (SHOW_CLOUDS)
             {
 
@@ -1270,17 +1266,13 @@ static void createworld(Map *map, int p, int q)
 
 }
 
-static void chunk_load(WorkerItem *item)
+static void create_chunk(Chunk *chunk, int p, int q)
 {
 
-    createworld(item->block_maps[1][1], item->p, item->q);
-
-}
-
-static void init_chunk(Chunk *chunk, int p, int q)
-{
-
-    int dx, dy, dz;
+    WorkerItem item;
+    int dx = p * CHUNK_SIZE - 1;
+    int dy = 0;
+    int dz = q * CHUNK_SIZE - 1;
 
     chunk->p = p;
     chunk->q = q;
@@ -1288,30 +1280,15 @@ static void init_chunk(Chunk *chunk, int p, int q)
     chunk->buffer = 0;
 
     dirty_chunk(chunk);
-
-    dx = p * CHUNK_SIZE - 1;
-    dy = 0;
-    dz = q * CHUNK_SIZE - 1;
-
     map_alloc(&chunk->map, dx, dy, dz, 0x7fff);
     map_alloc(&chunk->lights, dx, dy, dz, 0xf);
 
-}
+    item.p = chunk->p;
+    item.q = chunk->q;
+    item.block_maps[1][1] = &chunk->map;
+    item.light_maps[1][1] = &chunk->lights;
 
-static void create_chunk(Chunk *chunk, int p, int q)
-{
-
-    init_chunk(chunk, p, q);
-
-    WorkerItem _item;
-    WorkerItem *item = &_item;
-
-    item->p = chunk->p;
-    item->q = chunk->q;
-    item->block_maps[1][1] = &chunk->map;
-    item->light_maps[1][1] = &chunk->lights;
-
-    chunk_load(item);
+    createworld(item.block_maps[1][1], item.p, item.q);
 
 }
 
