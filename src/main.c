@@ -1249,7 +1249,6 @@ static void createworld(Map *map, int p, int q)
 static void create_chunk(Chunk *chunk, int p, int q)
 {
 
-    WorkerItem item;
     int dx = p * CHUNK_SIZE - 1;
     int dy = 0;
     int dz = q * CHUNK_SIZE - 1;
@@ -1263,10 +1262,7 @@ static void create_chunk(Chunk *chunk, int p, int q)
     map_alloc(&chunk->map, dx, dy, dz, 0x7fff);
     map_alloc(&chunk->lights, dx, dy, dz, 0xf);
 
-    item.block_maps[1][1] = &chunk->map;
-    item.light_maps[1][1] = &chunk->lights;
-
-    createworld(item.block_maps[1][1], chunk->p, chunk->q);
+    createworld(&chunk->map, chunk->p, chunk->q);
 
 }
 
