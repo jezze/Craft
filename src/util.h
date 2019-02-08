@@ -27,8 +27,5 @@ GLuint load_shader(GLenum type, const char *path);
 GLuint load_program(const char *path1, const char *path2);
 void load_png_texture(const char *file_name);
 char *tokenize(char *str, const char *delim, char **key);
-int char_width(char input);
-int string_width(const char *input);
-int wrap(const char *input, int max_width, char *output, int max_length);
 
 #endif
