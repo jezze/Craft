@@ -1157,18 +1157,20 @@ static void createworld(Map *map, int p, int q)
             float g = noise_simplex2(-x * 0.01, -z * 0.01, 2, 0.9, 2);
             int mh = g * 32 + 16;
             int h = f * mh;
-            int t = 12;
 
-            if (h <= t)
-                h = t;
+            if (h <= 12)
+                h = 12;
 
-            for (int y = 0; y < t; y++)
-                map_set(map, x, y, z, 2 * flag);
+            for (int y = 0; y < 10; y++)
+                map_set(map, x, y, z, CEMENT * flag);
 
-            for (int y = t; y < h; y++)
-                map_set(map, x, y, z, 1 * flag);
+            for (int y = 10; y < 12; y++)
+                map_set(map, x, y, z, SAND * flag);
 
-            if (h > t)
+            for (int y = 12; y < h; y++)
+                map_set(map, x, y, z, GRASS * flag);
+
+            if (h > 12)
             {
 
                 if (SHOW_PLANTS)
@@ -1177,14 +1179,14 @@ static void createworld(Map *map, int p, int q)
                     if (noise_simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6)
                     {
 
-                        map_set(map, x, h, z, 17 * flag);
+                        map_set(map, x, h, z, TALL_GRASS * flag);
 
                     }
 
                     if (noise_simplex2(x * 0.05, -z * 0.05, 4, 0.8, 2) > 0.7)
                     {
 
-                        int w = 18 + noise_simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
+                        int w = YELLOW_FLOWER + noise_simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
 
                         map_set(map, x, h, z, w * flag);
 
