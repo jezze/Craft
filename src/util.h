@@ -19,10 +19,6 @@
     #define LOG(...)
 #endif
 
-GLuint gen_buffer(GLsizei size, GLfloat *data);
-void del_buffer(GLuint buffer);
-GLfloat *malloc_faces(int components, int faces);
-GLuint gen_faces(int components, int faces, GLfloat *data);
 GLuint load_shader(GLenum type, const char *path);
 GLuint load_program(const char *path1, const char *path2);
 void load_png_texture(const char *file_name);

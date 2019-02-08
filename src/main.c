@@ -254,6 +254,44 @@ static void get_motion_vector(int flying, int sz, int sx, float rx, float ry, fl
 
 }
 
+static GLuint gen_buffer(GLsizei size, GLfloat *data)
+{
+
+    GLuint buffer;
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    return buffer;
+
+}
+
+static void del_buffer(GLuint buffer)
+{
+
+    glDeleteBuffers(1, &buffer);
+
+}
+
+static GLfloat *malloc_faces(int components, int faces)
+{
+
+    return malloc(sizeof(GLfloat) * 6 * components * faces);
+
+}
+
+static GLuint gen_faces(int components, int faces, GLfloat *data)
+{
+
+    GLuint buffer = gen_buffer(sizeof(GLfloat) * 6 * components * faces, data);
+
+    free(data);
+
+    return buffer;
+
+}
+
 static GLuint gen_crosshair_buffer()
 {
 
