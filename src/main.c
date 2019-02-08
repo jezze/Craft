@@ -178,18 +178,20 @@ static float get_daylight()
 static int get_scale_factor()
 {
 
-    int window_width, window_height;
-    int buffer_width, buffer_height;
+    int winw;
+    int winh;
+    int bufw;
+    int bufh;
+    int factor;
 
-    glfwGetWindowSize(g->window, &window_width, &window_height);
-    glfwGetFramebufferSize(g->window, &buffer_width, &buffer_height);
+    glfwGetWindowSize(g->window, &winw, &winh);
+    glfwGetFramebufferSize(g->window, &bufw, &bufh);
 
-    int result = buffer_width / window_width;
+    factor = bufw / winw;
+    factor = MAX(1, factor);
+    factor = MIN(2, factor);
 
-    result = MAX(1, result);
-    result = MIN(2, result);
-
-    return result;
+    return factor;
 
 }
 
@@ -207,7 +209,9 @@ static void get_sight_vector(float rx, float ry, float *vx, float *vy, float *vz
 static void get_motion_vector(int flying, int sz, int sx, float rx, float ry, float *vx, float *vy, float *vz)
 {
 
-    *vx = 0; *vy = 0; *vz = 0;
+    *vx = 0;
+    *vy = 0;
+    *vz = 0;
 
     if (!sz && !sx)
         return;
@@ -437,6 +441,7 @@ static int chunk_visible(float planes[6][4], int p, int q, int miny, int maxy)
     int x = p * CHUNK_SIZE - 1;
     int z = q * CHUNK_SIZE - 1;
     int d = CHUNK_SIZE + 1;
+    int n = g->ortho ? 4 : 6;
     float points[8][3] = {
         {x + 0, miny, z + 0},
         {x + d, miny, z + 0},
@@ -447,7 +452,6 @@ static int chunk_visible(float planes[6][4], int p, int q, int miny, int maxy)
         {x + 0, maxy, z + d},
         {x + d, maxy, z + d}
     };
-    int n = g->ortho ? 4 : 6;
 
     for (int i = 0; i < n; i++)
     {
@@ -571,10 +575,10 @@ static int _hit_test(Map *map, float max_distance, int previous, float x, float 
 static int hit_test(int previous, float x, float y, float z, float rx, float ry, int *bx, int *by, int *bz)
 {
 
-    int result = 0;
-    float best = 0;
     int p = chunked(x);
     int q = chunked(z);
+    int result = 0;
+    float best = 0;
     float vx, vy, vz;
 
     get_sight_vector(rx, ry, &vx, &vy, &vz);
@@ -582,13 +586,14 @@ static int hit_test(int previous, float x, float y, float z, float rx, float ry,
     for (int i = 0; i < g->chunk_count; i++)
     {
 
+        int hx, hy, hz, hw;
+
         Chunk *chunk = g->chunks + i;
 
         if (chunk_distance(chunk, p, q) > 1)
             continue;
 
-        int hx, hy, hz;
-        int hw = _hit_test(&chunk->map, 8, previous, x, y, z, vx, vy, vz, &hx, &hy, &hz);
+        hw = _hit_test(&chunk->map, 8, previous, x, y, z, vx, vy, vz, &hx, &hy, &hz);
 
         if (hw > 0)
         {
@@ -615,10 +620,10 @@ static int hit_test(int previous, float x, float y, float z, float rx, float ry,
 static int collide(int height, float *x, float *y, float *z)
 {
 
-    int result = 0;
     int p = chunked(*x);
     int q = chunked(*z);
     Chunk *chunk = find_chunk(p, q);
+    int result = 0;
 
     if (!chunk)
         return result;
@@ -1214,7 +1219,7 @@ static void createworld(Map *map, int p, int q)
                                 int d = (ox * ox) + (oz * oz) + (y - (h + 4)) * (y - (h + 4));
 
                                 if (d < 11)
-                                    map_set(map, x + ox, y, z + oz, 15);
+                                    map_set(map, x + ox, y, z + oz, LEAVES);
 
                             }
 
@@ -1223,7 +1228,7 @@ static void createworld(Map *map, int p, int q)
                     }
 
                     for (int y = h; y < h + 7; y++)
-                        map_set(map, x, y, z, 5);
+                        map_set(map, x, y, z, WOOD);
 
                 }
 
@@ -1236,7 +1241,7 @@ static void createworld(Map *map, int p, int q)
                 {
 
                     if (noise_simplex3(x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
-                        map_set(map, x, y, z, 16 * flag);
+                        map_set(map, x, y, z, CLOUD * flag);
 
                 }
 
@@ -1328,37 +1333,43 @@ static void delete_all_chunks()
 
 }
 
-static void load_chunks(Player *player, int r)
+static void load_chunks(Player *player, int radius, int max)
 {
 
     int p = chunked(player->x);
     int q = chunked(player->z);
 
-    for (int dp = -r; dp <= r; dp++)
+    for (int dp = -radius; dp <= radius; dp++)
     {
 
-        for (int dq = -r; dq <= r; dq++)
+        for (int dq = -radius; dq <= radius; dq++)
         {
 
             int a = p + dp;
             int b = q + dq;
             Chunk *chunk = find_chunk(a, b);
 
-            if (chunk)
+            if (!chunk)
             {
 
-                if (chunk->dirty)
-                    gen_chunk_buffer(chunk);
+                if (g->chunk_count < MAX_CHUNKS)
+                {
+
+                    chunk = g->chunks + g->chunk_count++;
+
+                    create_chunk(chunk, a, b);
+
+                }
 
             }
 
-            else if (g->chunk_count < MAX_CHUNKS)
+            if (chunk && chunk->dirty)
             {
 
-                chunk = g->chunks + g->chunk_count++;
-
-                create_chunk(chunk, a, b);
                 gen_chunk_buffer(chunk);
+
+                if (--max <= 0)
+                    return;
 
             }
 
@@ -1483,7 +1494,7 @@ static int render_chunks(Attrib *attrib, Player *player)
 
     int result = 0;
 
-    load_chunks(player, g->render_radius);
+    load_chunks(player, g->render_radius, 1);
 
     int p = chunked(player->x);
     int q = chunked(player->z);
@@ -2399,6 +2410,9 @@ void handle_movement(double dt)
 {
 
     static float dy = 0;
+    float vx;
+    float vy;
+    float vz;
     int sz = 0;
     int sx = 0;
     
@@ -2410,18 +2424,31 @@ void handle_movement(double dt)
         g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
         g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
 
-        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
-        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
-        if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
-        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
-        if (glfwGetKey(g->window, GLFW_KEY_LEFT)) g->player.rx -= m;
-        if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) g->player.rx += m;
-        if (glfwGetKey(g->window, GLFW_KEY_UP)) g->player.ry += m;
-        if (glfwGetKey(g->window, GLFW_KEY_DOWN)) g->player.ry -= m;
+        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD))
+            sz--;
+
+        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD))
+            sz++;
+
+        if (glfwGetKey(g->window, CRAFT_KEY_LEFT))
+            sx--;
+
+        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT))
+            sx++;
+
+        if (glfwGetKey(g->window, GLFW_KEY_LEFT))
+            g->player.rx -= m;
+
+        if (glfwGetKey(g->window, GLFW_KEY_RIGHT))
+            g->player.rx += m;
+
+        if (glfwGetKey(g->window, GLFW_KEY_UP))
+            g->player.ry += m;
+
+        if (glfwGetKey(g->window, GLFW_KEY_DOWN))
+            g->player.ry -= m;
 
     }
-
-    float vx, vy, vz;
 
     get_motion_vector(g->flying, sz, sx, g->player.rx, g->player.ry, &vx, &vy, &vz);
 
@@ -2649,7 +2676,7 @@ int main(int argc, char **argv)
         double last_update = glfwGetTime();
         GLuint sky_buffer = gen_sky_buffer();
 
-        load_chunks(&g->player, g->render_radius);
+        load_chunks(&g->player, g->render_radius, 512);
 
         g->player.y = highest_block(g->player.x, g->player.z) + 2;
 
