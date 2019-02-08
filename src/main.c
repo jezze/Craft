@@ -2674,13 +2674,12 @@ int main(int argc, char **argv)
         reset_model();
 
         double last_update = glfwGetTime();
+        double previous = last_update;
         GLuint sky_buffer = gen_sky_buffer();
 
-        load_chunks(&g->player, g->render_radius, 512);
+        load_chunks(&g->player, g->render_radius, ((g->render_radius * 2) + 1) * ((g->render_radius * 2) + 1));
 
         g->player.y = highest_block(g->player.x, g->player.z) + 2;
-
-        double previous = glfwGetTime();
 
         while (1)
         {
@@ -2704,6 +2703,7 @@ int main(int argc, char **argv)
 
             double now = glfwGetTime();
             double elapsed = now - g->fps.since;
+            double dt = now - previous;
 
             if (elapsed >= 1)
             {
@@ -2713,8 +2713,6 @@ int main(int argc, char **argv)
                 g->fps.since = now;
 
             }
-
-            double dt = now - previous;
 
             dt = MIN(dt, 0.2);
             dt = MAX(dt, 0.0);
@@ -2728,14 +2726,12 @@ int main(int argc, char **argv)
 
             delete_chunks();
 
-            Player *player = &g->player;
-
             glClear(GL_COLOR_BUFFER_BIT);
             glClear(GL_DEPTH_BUFFER_BIT);
-            render_sky(&sky_attrib, player, sky_buffer);
+            render_sky(&sky_attrib, &g->player, sky_buffer);
             glClear(GL_DEPTH_BUFFER_BIT);
 
-            int face_count = render_chunks(&block_attrib, player);
+            int face_count = render_chunks(&block_attrib, &g->player);
 
             glClear(GL_DEPTH_BUFFER_BIT);
             render_crosshairs(&line_attrib);
@@ -2755,7 +2751,7 @@ int main(int argc, char **argv)
                 hour = hour % 12;
                 hour = hour ? hour : 12;
 
-                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(player->x), chunked(player->z), player->x, player->y, player->z, 1, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
+                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(g->player.x), chunked(g->player.z), g->player.x, g->player.y, g->player.z, 1, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
                 ty -= ts * 2;
