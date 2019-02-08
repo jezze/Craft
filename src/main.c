@@ -1210,8 +1210,11 @@ static void createworld(Map *map, int p, int q)
             for (int y = 10; y < 12; y++)
                 map_set(map, x, y, z, SAND * flag);
 
-            for (int y = 12; y < h; y++)
-                map_set(map, x, y, z, GRASS * flag);
+            for (int y = 12; y < h - 1; y++)
+                map_set(map, x, y, z, DIRT * flag);
+
+            if (h > 12)
+                map_set(map, x, h - 1, z, GRASS * flag);
 
             if (h > 12)
             {
