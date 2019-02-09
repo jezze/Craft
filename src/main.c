@@ -1535,6 +1535,7 @@ static int render_chunks(Attrib *attrib, Player *player)
 
     int result = 0;
 
+    load_chunks(player, 1, 9);
     load_chunks(player, g->render_radius, 1);
 
     int p = chunked(player->x);
