@@ -1,6 +1,3 @@
-#ifndef _matrix_h_
-#define _matrix_h_
-
 void normalize(float *x, float *y, float *z);
 void mat_identity(float *matrix);
 void mat_translate(float *matrix, float dx, float dy, float dz);
@@ -15,5 +12,3 @@ void mat_ortho(float *matrix, float left, float right, float bottom, float top, 
 void set_matrix_2d(float *matrix, int width, int height);
 void set_matrix_3d(float *matrix, int width, int height, float x, float y, float z, float rx, float ry, float fov, int ortho, int radius);
 void set_matrix_item(float *matrix, int width, int height, int scale);
-
-#endif

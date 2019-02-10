@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include "mtwist.h"
 
 #define MTWIST_SEED                     4357

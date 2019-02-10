@@ -735,9 +735,6 @@ static int player_intersects_block(int height, float x, float y, float z, int hx
 static int has_lights(Chunk *chunk)
 {
 
-    if (!SHOW_LIGHTS)
-        return 0;
-
     for (int dp = -1; dp <= 1; dp++)
     {
 
@@ -897,21 +894,16 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
     int oz = chunk->q * CHUNK_SIZE - CHUNK_SIZE - 1;
     int has_light = 0;
 
-    if (SHOW_LIGHTS)
+    for (int a = 0; a < 3; a++)
     {
 
-        for (int a = 0; a < 3; a++)
+        for (int b = 0; b < 3; b++)
         {
 
-            for (int b = 0; b < 3; b++)
-            {
+            Map *map = item->light_maps[a][b];
 
-                Map *map = item->light_maps[a][b];
-
-                if (map && map->size)
-                    has_light = 1;
-
-            }
+            if (map && map->size)
+                has_light = 1;
 
         }
 
@@ -1221,28 +1213,23 @@ static void createworld(Map *map, int p, int q)
             if (h > 12)
             {
 
-                if (SHOW_PLANTS)
+                if (noise_simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6)
                 {
 
-                    if (noise_simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6)
-                    {
-
-                        map_set(map, x, h, z, TALL_GRASS * flag);
-
-                    }
-
-                    if (noise_simplex2(x * 0.05, -z * 0.05, 4, 0.8, 2) > 0.7)
-                    {
-
-                        int w = YELLOW_FLOWER + noise_simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
-
-                        map_set(map, x, h, z, w * flag);
-
-                    }
+                    map_set(map, x, h, z, TALL_GRASS * flag);
 
                 }
 
-                int ok = SHOW_TREES;
+                if (noise_simplex2(x * 0.05, -z * 0.05, 4, 0.8, 2) > 0.7)
+                {
+
+                    int w = YELLOW_FLOWER + noise_simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
+
+                    map_set(map, x, h, z, w * flag);
+
+                }
+
+                int ok = 1;
 
                 if (dx - 4 < 0 || dz - 4 < 0 || dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
                     ok = 0;
@@ -1277,16 +1264,11 @@ static void createworld(Map *map, int p, int q)
 
             }
 
-            if (SHOW_CLOUDS)
+            for (int y = 64; y < 72; y++)
             {
 
-                for (int y = 64; y < 72; y++)
-                {
-
-                    if (noise_simplex3(x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
-                        map_set(map, x, y, z, CLOUD * flag);
-
-                }
+                if (noise_simplex3(x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
+                    map_set(map, x, y, z, CLOUD * flag);
 
             }
 
@@ -2874,39 +2856,28 @@ int main(int argc, char **argv)
             float ts = 12 * g->scale;
             float tx = ts / 2;
             float ty = g->height - ts;
+            int hour = time_of_day() * 24;
+            char am_pm = hour < 12 ? 'a' : 'p';
 
-            if (SHOW_INFO_TEXT)
+            hour = hour % 12;
+            hour = hour ? hour : 12;
+
+            snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d] %d%cm %dfps", chunked(g->player.x), chunked(g->player.z), g->player.x, g->player.y, g->player.z, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
+            render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+
+            ty -= ts * 2;
+
+            for (int i = 0; i < MAX_MESSAGES; i++)
             {
 
-                int hour = time_of_day() * 24;
-                char am_pm = hour < 12 ? 'a' : 'p';
+                int index = (g->message_index + i) % MAX_MESSAGES;
 
-                hour = hour % 12;
-                hour = hour ? hour : 12;
-
-                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d] %d%cm %dfps", chunked(g->player.x), chunked(g->player.z), g->player.x, g->player.y, g->player.z, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
-                render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
-
-                ty -= ts * 2;
-
-            }
-
-            if (SHOW_CHAT_TEXT)
-            {
-
-                for (int i = 0; i < MAX_MESSAGES; i++)
+                if (strlen(g->messages[index]))
                 {
 
-                    int index = (g->message_index + i) % MAX_MESSAGES;
+                    render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, g->messages[index]);
 
-                    if (strlen(g->messages[index]))
-                    {
-
-                        render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, g->messages[index]);
-
-                        ty -= ts * 2;
-
-                    }
+                    ty -= ts * 2;
 
                 }
 
