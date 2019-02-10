@@ -2,8 +2,8 @@
 
 This is a fork of Craft made by Michael Fogleman.
 
-Craft original website: http://www.michaelfogleman.com/craft/
-Craft original github: https://github.com/fogleman/Craft
+* Original website: http://www.michaelfogleman.com/craft/
+* Original github: https://github.com/fogleman/Craft
 
 ### What differs from the original
 
