@@ -14,12 +14,6 @@
 #include "noise.h"
 #include "lodepng.h"
 
-#define MAX_CHUNKS 8192
-#define MAX_TEXT_LENGTH 256
-#define ALIGN_LEFT 0
-#define ALIGN_CENTER 1
-#define ALIGN_RIGHT 2
-
 typedef struct
 {
 
@@ -847,13 +841,6 @@ static void occlusion(char neighbors[27], char lights[27], float shades[27], flo
     }
 
 }
-
-#define XZ_SIZE (CHUNK_SIZE * 3 + 2)
-#define XZ_LO (CHUNK_SIZE)
-#define XZ_HI (CHUNK_SIZE * 2 + 1)
-#define Y_SIZE 258
-#define XYZ(x, y, z) ((y) * XZ_SIZE * XZ_SIZE + (x) * XZ_SIZE + (z))
-#define XZ(x, z) ((x) * XZ_SIZE + (z))
 
 static void light_fill(char *opaque, char *light, int x, int y, int z, int w, int force)
 {
