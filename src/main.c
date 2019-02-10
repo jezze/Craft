@@ -642,7 +642,9 @@ static int hit_test(int previous, float x, float y, float z, float rx, float ry,
             {
 
                 best = d;
-                *bx = hx; *by = hy; *bz = hz;
+                *bx = hx;
+                *by = hy;
+                *bz = hz;
                 result = hw;
 
             }
@@ -2047,41 +2049,24 @@ static void parse_command(const char *buffer, int forward)
     }
 }
 
-static void on_light()
+static void addlight()
 {
 
-    int hx, hy, hz;
-    int hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+    int hx, hy, hz, hw;
+
+    hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_destructable(hw))
         toggle_light(hx, hy, hz);
 
 }
 
-static void on_left_click()
+static void addblock()
 {
 
-    int hx, hy, hz;
-    int hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+    int hx, hy, hz, hw;
 
-    if (hy > 0 && hy < 256 && is_destructable(hw))
-    {
-
-        set_block(hx, hy, hz, 0);
-        record_block(hx, hy, hz, 0);
-
-        if (is_plant(get_block(hx, hy + 1, hz)))
-            set_block(hx, hy + 1, hz, 0);
-
-    }
-
-}
-
-static void on_right_click()
-{
-
-    int hx, hy, hz;
-    int hw = hit_test(1, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+    hw = hit_test(1, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_obstacle(hw))
     {
@@ -2098,13 +2083,35 @@ static void on_right_click()
 
 }
 
-static void on_middle_click()
+static void removeblock()
 {
 
-    int hx, hy, hz;
-    int hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+    int hx, hy, hz, hw;
 
-    for (int i = 0; i < item_count; i++)
+    hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+
+    if (hy > 0 && hy < 256 && is_destructable(hw))
+    {
+
+        set_block(hx, hy, hz, 0);
+        record_block(hx, hy, hz, 0);
+
+        if (is_plant(get_block(hx, hy + 1, hz)))
+            set_block(hx, hy + 1, hz, 0);
+
+    }
+
+}
+
+static void selectblock()
+{
+
+    int hx, hy, hz, hw;
+    unsigned int i;
+
+    hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+
+    for (i = 0; i < item_count; i++)
     {
 
         if (items[i] == hw)
@@ -2120,7 +2127,7 @@ static void on_middle_click()
 
 }
 
-static void on_key(GLFWwindow *window, int key, int scancode, int action, int mods)
+static void onkey(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 
     int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
@@ -2194,16 +2201,6 @@ static void on_key(GLFWwindow *window, int key, int scancode, int action, int mo
 
         }
 
-        else
-        {
-
-            if (control)
-                on_right_click();
-            else
-                on_left_click();
-
-        }
-
     }
 
     if (control && key == 'V')
@@ -2258,7 +2255,7 @@ static void on_key(GLFWwindow *window, int key, int scancode, int action, int mo
 
 }
 
-static void on_char(GLFWwindow *window, unsigned int u)
+static void onchar(GLFWwindow *window, unsigned int u)
 {
 
     if (g->suppress_char)
@@ -2307,7 +2304,7 @@ static void on_char(GLFWwindow *window, unsigned int u)
 
 }
 
-static void on_scroll(GLFWwindow *window, double xdelta, double ydelta)
+static void onscroll(GLFWwindow *window, double xdelta, double ydelta)
 {
 
     static double ypos = 0;
@@ -2337,7 +2334,7 @@ static void on_scroll(GLFWwindow *window, double xdelta, double ydelta)
 
 }
 
-static void on_mouse_button(GLFWwindow *window, int button, int action, int mods)
+static void onmousebutton(GLFWwindow *window, int button, int action, int mods)
 {
 
     int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
@@ -2352,10 +2349,7 @@ static void on_mouse_button(GLFWwindow *window, int button, int action, int mods
         if (exclusive)
         {
 
-            if (control)
-                on_right_click();
-            else
-                on_left_click();
+            removeblock();
 
         }
 
@@ -2375,9 +2369,9 @@ static void on_mouse_button(GLFWwindow *window, int button, int action, int mods
         {
 
             if (control)
-                on_light();
+                addlight();
             else
-                on_right_click();
+                addblock();
 
         }
 
@@ -2387,7 +2381,7 @@ static void on_mouse_button(GLFWwindow *window, int button, int action, int mods
     {
 
         if (exclusive)
-            on_middle_click();
+            selectblock();
 
     }
 
@@ -2404,10 +2398,9 @@ static void handle_mouse_input()
     {
 
         double mx, my;
+        float m = 0.0025;
 
         glfwGetCursorPos(g->window, &mx, &my);
-
-        float m = 0.0025;
 
         g->player.rx += (mx - px) * m;
 
@@ -2713,10 +2706,10 @@ int main(int argc, char **argv)
     glfwMakeContextCurrent(g->window);
     glfwSwapInterval(VSYNC);
     glfwSetInputMode(g->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetKeyCallback(g->window, on_key);
-    glfwSetCharCallback(g->window, on_char);
-    glfwSetMouseButtonCallback(g->window, on_mouse_button);
-    glfwSetScrollCallback(g->window, on_scroll);
+    glfwSetKeyCallback(g->window, onkey);
+    glfwSetCharCallback(g->window, onchar);
+    glfwSetMouseButtonCallback(g->window, onmousebutton);
+    glfwSetScrollCallback(g->window, onscroll);
 
     if (glewInit() != GLEW_OK)
         return -1;
