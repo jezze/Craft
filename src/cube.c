@@ -4,8 +4,21 @@
 #include "item.h"
 #include "matrix.h"
 
-void make_cube_faces(float *data, float ao[6][4], float light[6][4], int left, int right, int top, int bottom, int front, int back, int wleft, int wright, int wtop, int wbottom, int wfront, int wback, float x, float y, float z, float n)
+void make_cube(float *data, float ao[6][4], float light[6][4], int left, int right, int top, int bottom, int front, int back, float x, float y, float z, float n, int w)
 {
+
+    float *d = data;
+    float s = 0.0625;
+    float a = 0 + 1 / 2048.0;
+    float b = s - 1 / 2048.0;
+    int wleft = blocks[w][0];
+    int wright = blocks[w][1];
+    int wtop = blocks[w][2];
+    int wbottom = blocks[w][3];
+    int wfront = blocks[w][4];
+    int wback = blocks[w][5];
+    int faces[6] = {left, right, top, bottom, front, back};
+    int tiles[6] = {wleft, wright, wtop, wbottom, wfront, wback};
 
     static const float positions[6][4][3] = {
         {{-1, -1, -1}, {-1, -1, +1}, {-1, +1, -1}, {-1, +1, +1}},
@@ -52,13 +65,6 @@ void make_cube_faces(float *data, float ao[6][4], float light[6][4], int left, i
         {0, 2, 1, 2, 3, 1}
     };
 
-    float *d = data;
-    float s = 0.0625;
-    float a = 0 + 1 / 2048.0;
-    float b = s - 1 / 2048.0;
-    int faces[6] = {left, right, top, bottom, front, back};
-    int tiles[6] = {wleft, wright, wtop, wbottom, wfront, wback};
-
     for (int i = 0; i < 6; i++)
     {
 
@@ -88,20 +94,6 @@ void make_cube_faces(float *data, float ao[6][4], float light[6][4], int left, i
         }
 
     }
-
-}
-
-void make_cube(float *data, float ao[6][4], float light[6][4], int left, int right, int top, int bottom, int front, int back, float x, float y, float z, float n, int w)
-{
-
-    int wleft = blocks[w][0];
-    int wright = blocks[w][1];
-    int wtop = blocks[w][2];
-    int wbottom = blocks[w][3];
-    int wfront = blocks[w][4];
-    int wback = blocks[w][5];
-    
-    make_cube_faces(data, ao, light, left, right, top, bottom, front, back, wleft, wright, wtop, wbottom, wfront, wback, x, y, z, n);
 
 }
 
