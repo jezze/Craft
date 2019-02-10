@@ -2540,34 +2540,6 @@ void handle_movement(double dt)
 
 }
 
-void reset_model()
-{
-
-    memset(g->chunks, 0, sizeof(Chunk) * MAX_CHUNKS);
-
-    g->chunk_count = 0;
-
-    memset(&g->player, 0, sizeof(Player));
-
-    g->flying = 0;
-    g->item_index = 0;
-
-    memset(g->typing_buffer, 0, sizeof(char) * MAX_TEXT_LENGTH);
-
-    g->typing = 0;
-
-    memset(g->messages, 0, sizeof(char) * MAX_MESSAGES * MAX_TEXT_LENGTH);
-
-    g->message_index = 0;
-
-    g->day_length = DAY_LENGTH;
-
-    glfwSetTime(g->day_length / 3.0);
-
-    g->time_changed = 1;
-
-}
-
 static GLuint load_shader(GLenum type, const char *path)
 {
 
@@ -2829,10 +2801,14 @@ int main(int argc, char **argv)
     while (running)
     {
 
-        reset_model();
-
         double last_update = glfwGetTime();
         double previous = last_update;
+
+        g->day_length = DAY_LENGTH;
+        g->time_changed = 1;
+
+        glfwSetTime(g->day_length / 3.0);
+
         GLuint sky_buffer = gen_sky_buffer();
 
         load_chunks(&g->player, g->render_radius, ((g->render_radius * 2) + 1) * ((g->render_radius * 2) + 1));
@@ -2863,6 +2839,11 @@ int main(int argc, char **argv)
             double elapsed = now - g->fps.since;
             double dt = now - previous;
 
+            previous = now;
+
+            if (now - last_update > 0.1)
+                last_update = now;
+
             if (elapsed >= 1)
             {
 
@@ -2874,18 +2855,17 @@ int main(int argc, char **argv)
 
             dt = MIN(dt, 0.2);
             dt = MAX(dt, 0.0);
-            previous = now;
 
+            /* Input */
             handle_mouse_input();
             handle_movement(dt);
 
-            if (now - last_update > 0.1)
-                last_update = now;
-
+            /* Logic */
             delete_chunks();
             load_chunks(&g->player, 1, 9);
             load_chunks(&g->player, g->render_radius, 1);
 
+            /* Rendering */
             glClear(GL_COLOR_BUFFER_BIT);
             glClear(GL_DEPTH_BUFFER_BIT);
             render_sky(&sky_attrib, &g->player, sky_buffer);
