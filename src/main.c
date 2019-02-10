@@ -1533,27 +1533,20 @@ static void builder_block(int x, int y, int z, int w)
 static int render_chunks(Attrib *attrib, Player *player)
 {
 
-    int result = 0;
-
-    load_chunks(player, 1, 9);
-    load_chunks(player, g->render_radius, 1);
-
     int p = chunked(player->x);
     int q = chunked(player->z);
-    float light = get_daylight();
     float matrix[16];
+    float planes[6][4];
+    int result = 0;
 
     set_matrix_3d(matrix, g->width, g->height, player->x, player->y, player->z, player->rx, player->ry, g->fov, g->ortho, g->render_radius);
-
-    float planes[6][4];
-
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, player->x, player->y, player->z);
     glUniform1i(attrib->sampler, 0);
     glUniform1i(attrib->extra1, 2);
-    glUniform1f(attrib->extra2, light);
+    glUniform1f(attrib->extra2, get_daylight());
     glUniform1f(attrib->extra3, g->render_radius * CHUNK_SIZE);
     glUniform1i(attrib->extra4, g->ortho);
     glUniform1f(attrib->timer, time_of_day());
@@ -1563,14 +1556,11 @@ static int render_chunks(Attrib *attrib, Player *player)
 
         Chunk *chunk = g->chunks + i;
 
-        if (chunk_distance(chunk, p, q) > g->render_radius) {
+        if (chunk_distance(chunk, p, q) > g->render_radius)
             continue;
-        }
 
         if (!chunk_visible(planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
-        {
             continue;
-        }
 
         draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
 
@@ -2898,6 +2888,9 @@ int main(int argc, char **argv)
             glClear(GL_DEPTH_BUFFER_BIT);
             render_sky(&sky_attrib, &g->player, sky_buffer);
             glClear(GL_DEPTH_BUFFER_BIT);
+
+            load_chunks(&g->player, 1, 9);
+            load_chunks(&g->player, g->render_radius, 1);
 
             int face_count = render_chunks(&block_attrib, &g->player);
 
