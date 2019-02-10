@@ -2883,14 +2883,13 @@ int main(int argc, char **argv)
                 last_update = now;
 
             delete_chunks();
+            load_chunks(&g->player, 1, 9);
+            load_chunks(&g->player, g->render_radius, 1);
 
             glClear(GL_COLOR_BUFFER_BIT);
             glClear(GL_DEPTH_BUFFER_BIT);
             render_sky(&sky_attrib, &g->player, sky_buffer);
             glClear(GL_DEPTH_BUFFER_BIT);
-
-            load_chunks(&g->player, 1, 9);
-            load_chunks(&g->player, g->render_radius, 1);
 
             int face_count = render_chunks(&block_attrib, &g->player);
 
@@ -2912,7 +2911,7 @@ int main(int argc, char **argv)
                 hour = hour % 12;
                 hour = hour ? hour : 12;
 
-                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps", chunked(g->player.x), chunked(g->player.z), g->player.x, g->player.y, g->player.z, 1, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
+                snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d] %d%cm %dfps", chunked(g->player.x), chunked(g->player.z), g->player.x, g->player.y, g->player.z, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
                 ty -= ts * 2;
