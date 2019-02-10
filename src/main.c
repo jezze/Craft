@@ -1438,7 +1438,7 @@ static void toggle_light(int x, int y, int z)
 
 }
 
-void _set_block(int p, int q, int x, int y, int z, int w)
+static void _set_block(int p, int q, int x, int y, int z, int w)
 {
 
     Chunk *chunk = find_chunk(p, q);
@@ -2077,7 +2077,7 @@ static void on_left_click()
 
 }
 
-void on_right_click()
+static void on_right_click()
 {
 
     int hx, hy, hz;
@@ -2098,7 +2098,7 @@ void on_right_click()
 
 }
 
-void on_middle_click()
+static void on_middle_click()
 {
 
     int hx, hy, hz;
@@ -2120,7 +2120,7 @@ void on_middle_click()
 
 }
 
-void on_key(GLFWwindow *window, int key, int scancode, int action, int mods)
+static void on_key(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 
     int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
@@ -2258,7 +2258,7 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods)
 
 }
 
-void on_char(GLFWwindow *window, unsigned int u)
+static void on_char(GLFWwindow *window, unsigned int u)
 {
 
     if (g->suppress_char)
@@ -2307,7 +2307,7 @@ void on_char(GLFWwindow *window, unsigned int u)
 
 }
 
-void on_scroll(GLFWwindow *window, double xdelta, double ydelta)
+static void on_scroll(GLFWwindow *window, double xdelta, double ydelta)
 {
 
     static double ypos = 0;
@@ -2337,7 +2337,7 @@ void on_scroll(GLFWwindow *window, double xdelta, double ydelta)
 
 }
 
-void on_mouse_button(GLFWwindow *window, int button, int action, int mods)
+static void on_mouse_button(GLFWwindow *window, int button, int action, int mods)
 {
 
     int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
@@ -2393,7 +2393,7 @@ void on_mouse_button(GLFWwindow *window, int button, int action, int mods)
 
 }
 
-void handle_mouse_input()
+static void handle_mouse_input()
 {
 
     int exclusive = glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
@@ -2438,7 +2438,7 @@ void handle_mouse_input()
 
 }
 
-void handle_movement(double dt)
+static void handle_movement(double dt)
 {
 
     static float dy = 0;
