@@ -1,7 +1,6 @@
 #include <math.h>
 #include "config.h"
 #include "matrix.h"
-#include "util.h"
 
 void normalize(float *x, float *y, float *z)
 {

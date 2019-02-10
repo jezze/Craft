@@ -2,7 +2,6 @@
 #define _config_h_
 
 // app parameters
-#define DEBUG 0
 #define FULLSCREEN 1
 #define WINDOW_WIDTH 1024
 #define WINDOW_HEIGHT 768
@@ -38,5 +37,13 @@
 // advanced parameters
 #define RENDER_CHUNK_RADIUS 8
 #define CHUNK_SIZE 32
+
+#define PI 3.14159265359
+#define DEGREES(radians) ((radians) * 180 / PI)
+#define RADIANS(degrees) ((degrees) * PI / 180)
+#define ABS(x) ((x) < 0 ? (-(x)) : (x))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define SIGN(x) (((x) > 0) - ((x) < 0))
 
 #endif

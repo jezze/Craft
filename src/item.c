@@ -1,5 +1,5 @@
+#include "config.h"
 #include "item.h"
-#include "util.h"
 
 const int items[] = {
     // items the user can build
