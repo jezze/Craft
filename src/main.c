@@ -651,6 +651,76 @@ static int hit_test(int previous, float x, float y, float z, float rx, float ry,
 
 }
 
+unsigned int aabbvsaabb(float aminx, float amaxx, float aminy, float amaxy, float aminz, float amaxz, float bminx, float bmaxx, float bminy, float bmaxy, float bminz, float bmaxz, Map *map)
+{
+
+    if (!is_obstacle(map_get(map, bminx, bminy, bminz)))
+        return 0;
+
+    if (aminx > bmaxx || amaxx < bminx)
+        return 0;
+
+    if (aminy > bmaxy || amaxy < bminy)
+        return 0;
+
+    if (aminz > bmaxz || amaxz < bminz)
+        return 0;
+
+    return 1;
+
+}
+
+void adjust(float aminx, float amaxx, float aminy, float amaxy, float aminz, float amaxz, float bminx, float bmaxx, float bminy, float bmaxy, float bminz, float bmaxz, float *x, float *y, float *z)
+{
+
+    float diffx;
+    float diffy;
+    float diffz;
+    float xneg = bminx  + 1.0 - aminx;
+    float xpos = bminx - amaxx;
+    float yneg = bminy  + 1.0 - aminy;
+    float ypos = bminy - amaxy;
+    float zneg = bminz  + 1.0 - aminz;
+    float zpos = bminz - amaxz;
+
+/*
+    if (abs(xneg) < abs(xpos))
+        diffx = xneg;
+    else
+        diffx = xpos;
+
+    if (abs(zneg) < abs(zpos))
+        diffz = zneg;
+    else
+        diffz = zpos;
+
+    if (abs(diffz) < abs(diffx))
+        *x += diffx;
+    else
+        *z += diffz;
+*/
+
+
+
+
+    /* X+ Z+ */
+
+    if (xpos > zpos)
+        *x += xpos;
+    else
+        *z += zpos;
+
+    /* X+ Z- */
+
+/*
+    if (xneg < zneg)
+        *x += xneg;
+    else
+        *z += zneg;
+*/
+
+}
+
 static int collide(int height, float *x, float *y, float *z)
 {
 
@@ -664,42 +734,125 @@ static int collide(int height, float *x, float *y, float *z)
 
     Map *map = &chunk->map;
 
-    int nx = roundf(*x);
+    int bx = (int)(*x);
+    int by = (int)(*y);
+    int bz = (int)(*z);
+
+    float aminx = *x + 0.25;
+    float amaxx = *x + 0.75;
+    float aminy = *y + 0.00;
+    float amaxy = *y + 1.00;
+    float aminz = *z + 0.25;
+    float amaxz = *z + 0.75;
+
+    int cx;
+    int cy;
+    int cz;
+
+    /* X=0 Y=0 Z=0 */
+
+    cx = bx;
+    cy = by;
+    cz = bz;
+
+    if (bx < 0)
+        cx--;
+
+    if (bz < 0)
+        cz--;
+
+    chunk = find_chunk(chunked(cx), chunked(cz));
+    map = &chunk->map;
+
+    if (aabbvsaabb(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, map))
+        adjust(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, x, y, z);
+
+    /* X=0 Y=0 Z=1 */
+
+    cx = bx;
+    cy = by;
+    cz = bz + 1;
+
+    if (bx < 0)
+        cx--;
+
+    if (bz < 0)
+        cz--;
+
+    chunk = find_chunk(chunked(cx), chunked(cz));
+    map = &chunk->map;
+
+    if (aabbvsaabb(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, map))
+        adjust(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, x, y, z);
+
+    /* X=1 Y=0 Z=0 */
+
+    cx = bx + 1;
+    cy = by;
+    cz = bz;
+
+    if (bx < 0)
+        cx--;
+
+    if (bz < 0)
+        cz--;
+
+    chunk = find_chunk(chunked(cx), chunked(cz));
+    map = &chunk->map;
+
+    if (aabbvsaabb(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, map))
+        adjust(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, x, y, z);
+
+    /* X=1 Y=0 Z=1 */
+
+    cx = bx + 1;
+    cy = by;
+    cz = bz + 1;
+
+    if (bx < 0)
+        cx--;
+
+    if (bz < 0)
+        cz--;
+
+    chunk = find_chunk(chunked(cx), chunked(cz));
+    map = &chunk->map;
+
+    if (aabbvsaabb(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, map))
+        adjust(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, x, y, z);
+
+
+
+
+
+
+
+
+
+
+    /* HANDLE Y */
+
+    int nx = (int)(*x);
     int ny = roundf(*y);
-    int nz = roundf(*z);
-    float px = *x - nx;
+    int nz = (int)(*z);
     float py = *y - ny;
-    float pz = *z - nz;
     float pad = 0.25;
 
-    for (int dy = 0; dy < height; dy++)
+
+
+    if (py < -pad && is_obstacle(map_get(map, nx, ny - 2, nz)))
     {
 
-        if (px < -pad && is_obstacle(map_get(map, nx - 1, ny - dy, nz))) {
-            *x = nx - pad;
-        }
+        *y = ny - pad;
+        result = 1;
 
-        if (px > pad && is_obstacle(map_get(map, nx + 1, ny - dy, nz))) {
-            *x = nx + pad;
-        }
+    }
 
-        if (py < -pad && is_obstacle(map_get(map, nx, ny - dy - 1, nz))) {
-            *y = ny - pad;
-            result = 1;
-        }
+    if (py > pad && is_obstacle(map_get(map, nx, ny, nz)))
+    {
 
-        if (py > pad && is_obstacle(map_get(map, nx, ny - dy + 1, nz))) {
-            *y = ny + pad;
-            result = 1;
-        }
-
-        if (pz < -pad && is_obstacle(map_get(map, nx, ny - dy, nz - 1))) {
-            *z = nz - pad;
-        }
-
-        if (pz > pad && is_obstacle(map_get(map, nx, ny - dy, nz + 1))) {
-            *z = nz + pad;
-        }
+        *y = ny + pad;
+        result = 1;
 
     }
 
