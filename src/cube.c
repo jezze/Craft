@@ -100,6 +100,15 @@ void make_cube(float *data, float ao[6][4], float light[6][4], int left, int rig
 void make_plant(float *data, float ao, float light, float px, float py, float pz, float n, int w, float rotation)
 {
 
+    float *d = data;
+    float s = 0.0625;
+    float a = 0;
+    float b = s;
+    float du = (plants[w] % 16) * s;
+    float dv = (plants[w] / 16) * s;
+    float ma[16];
+    float mb[16];
+
     static const float positions[4][4][3] = {
         {{ 0, -1, -1}, { 0, -1, +1}, { 0, +1, -1}, { 0, +1, +1}},
         {{ 0, -1, -1}, { 0, -1, +1}, { 0, +1, -1}, { 0, +1, +1}},
@@ -127,15 +136,6 @@ void make_plant(float *data, float ao, float light, float px, float py, float pz
         {0, 3, 2, 0, 1, 3},
         {0, 3, 1, 0, 2, 3}
     };
-
-    float *d = data;
-    float s = 0.0625;
-    float a = 0;
-    float b = s;
-    float du = (plants[w] % 16) * s;
-    float dv = (plants[w] / 16) * s;
-    float ma[16];
-    float mb[16];
 
     for (int i = 0; i < 4; i++)
     {
@@ -211,6 +211,19 @@ void make_character(float *data, float x, float y, float n, float m, char c)
 void make_character_3d(float *data, float x, float y, float z, float n, int face, char c)
 {
 
+    float *d = data;
+    float s = 0.0625;
+    float pu = s / 5;
+    float pv = s / 2.5;
+    float u1 = pu;
+    float v1 = pv;
+    float u2 = s - pu;
+    float v2 = s * 2 - pv;
+    float p = 0.5;
+    int w = c - 32;
+    float du = (w % 16) * s;
+    float dv = 1 - (w / 16 + 1) * s * 2;
+
     static const float positions[8][6][3] = {
         {{0, -2, -1}, {0, +2, +1}, {0, +2, -1}, {0, -2, -1}, {0, -2, +1}, {0, +2, +1}},
         {{0, -2, -1}, {0, +2, +1}, {0, -2, +1}, {0, -2, -1}, {0, +2, -1}, {0, +2, +1}},
@@ -237,19 +250,6 @@ void make_character_3d(float *data, float x, float y, float z, float n, int face
         {-1, 0, 0}, {+1, 0, 0}, {0, 0, -1}, {0, 0, +1},
         {0, +1, 0}, {0, +1, 0}, {0, +1, 0}, {0, +1, 0},
     };
-
-    float *d = data;
-    float s = 0.0625;
-    float pu = s / 5;
-    float pv = s / 2.5;
-    float u1 = pu;
-    float v1 = pv;
-    float u2 = s - pu;
-    float v2 = s * 2 - pv;
-    float p = 0.5;
-    int w = c - 32;
-    float du = (w % 16) * s;
-    float dv = 1 - (w / 16 + 1) * s * 2;
 
     x += p * offsets[face][0];
     y += p * offsets[face][1];
@@ -355,6 +355,8 @@ int _make_sphere(float *data, float r, int detail, float *a, float *b, float *c,
 void make_sphere(float *data, float r, int detail)
 {
 
+    int total = 0;
+
     static int indices[8][3] = {
         {4, 3, 0}, {1, 4, 0},
         {3, 4, 5}, {4, 1, 5},
@@ -373,8 +375,6 @@ void make_sphere(float *data, float r, int detail)
         {0, 0}, {0, 0.5},
         {0, 1}, {0, 0.5}
     };
-
-    int total = 0;
 
     for (int i = 0; i < 8; i++)
     {
