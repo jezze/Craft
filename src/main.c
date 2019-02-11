@@ -887,7 +887,7 @@ static int collide(Player *player)
 
     Box box;
     box.x = player->x + 0.25;
-    box.y = player->y - 1.0;
+    box.y = player->y;
     box.z = player->z + 0.25;
     box.lx = 0.5;
     box.ly = 1.0;
@@ -935,9 +935,7 @@ static int collide(Player *player)
 
                 aabbsweep(box, block, &normalx, &normaly, &normalz);
 
-                player->x -= (player->vx) * abs(normalx);
-                player->y -= (player->vy) * abs(normaly);
-                player->z -= (player->vz) * abs(normalz);
+                player->y = (block.y + block.ly);
 
             }
 
