@@ -801,16 +801,14 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
     }
 
-    float entryTime = MAX(xEntry, zEntry);
-    float exitTime = MIN(xExit, zExit);
-
-    if (xEntry > zEntry)
+    if (xEntry > zEntry && xEntry > yEntry)
     {
 
         if (xInvEntry < 0.0f)
         {
 
             *normalx = 1.0f;
+            *normaly = 0.0f;
             *normalz = 0.0f;
 
         }
@@ -819,6 +817,30 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
         {
 
             *normalx = -1.0f;
+            *normaly = 0.0f;
+            *normalz = 0.0f;
+
+        }
+
+    }
+
+    else if (yEntry > zEntry)
+    {
+
+        if (yInvEntry < 0.0f)
+        {
+
+            *normalx = 0.0f;
+            *normaly = 1.0f;
+            *normalz = 0.0f;
+
+        }
+
+        else
+        {
+
+            *normalx = 0.0f;
+            *normaly = -1.0f;
             *normalz = 0.0f;
 
         }
@@ -832,6 +854,7 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
         {
 
             *normalx = 0.0f;
+            *normaly = 0.0f;
             *normalz = 1.0f;
 
         }
@@ -840,17 +863,18 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
         {
 
             *normalx = 0.0f;
+            *normaly = 0.0f;
             *normalz = -1.0f;
 
         }
 
     }
 
-    return entryTime;
+    return 0;
 
 }
 
-static int collide(int height, Player *player)
+static int collide(Player *player)
 {
 
     int bx = (int)(player->x);
@@ -859,7 +883,7 @@ static int collide(int height, Player *player)
 
     Box box;
     box.x = player->x + 0.25;
-    box.y = player->y;
+    box.y = player->y - 1.0;
     box.z = player->z + 0.25;
     box.lx = 0.5;
     box.ly = 1.0;
@@ -908,6 +932,7 @@ static int collide(int height, Player *player)
                 aabbsweep(box, block, &normalx, &normaly, &normalz);
 
                 player->x -= (player->vx) * abs(normalx);
+                player->y -= (player->vy) * abs(normaly);
                 player->z -= (player->vz) * abs(normalz);
 
             }
@@ -916,45 +941,7 @@ static int collide(int height, Player *player)
 
     }
 
-
-
-    /* HANDLE Y */
-
-    int p = chunked(player->x);
-    int q = chunked(player->z);
-    Chunk *chunk = find_chunk(p, q);
-    int result = 0;
-
-    if (!chunk)
-        return result;
-
-    Map *map = &chunk->map;
-
-    int nx = (int)(player->x);
-    int ny = roundf(player->y);
-    int nz = (int)(player->z);
-    float py = player->y - ny;
-    float pad = 0.25;
-
-
-
-    if (py < -pad && is_obstacle(map_get(map, nx, ny - 2, nz)))
-    {
-
-        player->y = ny - pad;
-        result = 1;
-
-    }
-
-    if (py > pad && is_obstacle(map_get(map, nx, ny, nz)))
-    {
-
-        player->y = ny + pad;
-        result = 1;
-
-    }
-
-    return result;
+    return 0;
 
 }
 
@@ -2377,7 +2364,7 @@ static void handle_movement(double dt)
         {
 
             g->player.dy -= ut * 8.0;
-            g->player.dy = MAX(g->player.dy, -250);
+            g->player.dy = MAX(g->player.dy, -8.0);
 
         }
 
@@ -2386,13 +2373,9 @@ static void handle_movement(double dt)
         g->player.y += g->player.vy;
         g->player.z += g->player.vz;
 
-        if (collide(2, &g->player))
-            g->player.dy = 0;
+        collide(&g->player);
 
     }
-
-    if (g->player.y < 0)
-        g->player.y = highest_block(g->player.x, g->player.z) + 2;
 
 }
 
