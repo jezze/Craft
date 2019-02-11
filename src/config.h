@@ -16,6 +16,7 @@
 #define CRAFT_KEY_ORTHO                 GLFW_KEY_F
 #define CRAFT_KEY_COMMAND               GLFW_KEY_SLASH
 #define CRAFT_KEY_JUMP                  GLFW_KEY_SPACE
+#define CRAFT_KEY_CROUCH                GLFW_KEY_LEFT_SHIFT
 #define CRAFT_KEY_FLY                   GLFW_KEY_TAB
 #define RENDER_CHUNK_RADIUS             8
 #define MAX_CHUNKS                      8192

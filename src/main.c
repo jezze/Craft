@@ -17,6 +17,15 @@
 typedef struct
 {
 
+    float x, y, z;
+    float lx, ly, lz;
+    float vx, vy, vz;
+
+} Box;
+
+typedef struct
+{
+
     unsigned int fps;
     unsigned int frames;
     double since;
@@ -63,6 +72,9 @@ typedef struct
     float x;
     float y;
     float z;
+    float vx;
+    float vy;
+    float vz;
     float rx;
     float ry;
 
@@ -200,51 +212,54 @@ static void get_sight_vector(float rx, float ry, float *vx, float *vy, float *vz
 
 }
 
-static void get_motion_vector(int flying, int sz, int sx, float rx, float ry, float *vx, float *vy, float *vz)
+static void get_motion_vector_flying(int sz, int sx, Player *player)
 {
 
-    *vx = 0;
-    *vy = 0;
-    *vz = 0;
+    player->vx = 0;
+    player->vy = 0;
+    player->vz = 0;
+
+    if (!sz && !sx)
+        return;
+
+    float strafe = atan2f(sz, sx);
+    float m = cosf(player->ry);
+    float y = sinf(player->ry);
+
+    if (sx)
+    {
+
+        if (!sz)
+            y = 0;
+
+        m = 1;
+
+    }
+
+    if (sz > 0)
+        y = -y;
+
+    player->vx = cosf(player->rx + strafe) * m;
+    player->vy = y;
+    player->vz = sinf(player->rx + strafe) * m;
+
+}
+
+static void get_motion_vector_normal(int sz, int sx, Player *player)
+{
+
+    player->vx = 0;
+    player->vy = 0;
+    player->vz = 0;
 
     if (!sz && !sx)
         return;
 
     float strafe = atan2f(sz, sx);
 
-    if (flying)
-    {
-
-        float m = cosf(ry);
-        float y = sinf(ry);
-
-        if (sx)
-        {
-
-            if (!sz)
-                y = 0;
-
-            m = 1;
-
-        }
-
-        if (sz > 0)
-            y = -y;
-
-        *vx = cosf(rx + strafe) * m;
-        *vy = y;
-        *vz = sinf(rx + strafe) * m;
-
-    }
-
-    else
-    {
-
-        *vx = cosf(rx + strafe);
-        *vy = 0;
-        *vz = sinf(rx + strafe);
-
-    }
+    player->vx = cosf(player->rx + strafe);
+    player->vy = 0;
+    player->vz = sinf(player->rx + strafe);
 
 }
 
@@ -651,11 +666,21 @@ static int hit_test(int previous, float x, float y, float z, float rx, float ry,
 
 }
 
-unsigned int aabbvsaabb(float aminx, float amaxx, float aminy, float amaxy, float aminz, float amaxz, float bminx, float bmaxx, float bminy, float bmaxy, float bminz, float bmaxz, Map *map)
+unsigned int aabbcheck(Box *b1, Box *b2)
 {
 
-    if (!is_obstacle(map_get(map, bminx, bminy, bminz)))
-        return 0;
+    float aminx = b1->x;
+    float amaxx = b1->x + b1->lx;
+    float aminy = b1->y;
+    float amaxy = b1->y + b1->ly;
+    float aminz = b1->z;
+    float amaxz = b1->z + b1->lz;
+    float bminx = b2->x;
+    float bmaxx = b2->x + b2->lx;
+    float bminy = b2->y;
+    float bmaxy = b2->y + b2->ly;
+    float bminz = b2->z;
+    float bmaxz = b2->z + b2->lz;
 
     if (aminx > bmaxx || amaxx < bminx)
         return 0;
@@ -670,62 +695,232 @@ unsigned int aabbvsaabb(float aminx, float amaxx, float aminy, float amaxy, floa
 
 }
 
-void adjust(float aminx, float amaxx, float aminy, float amaxy, float aminz, float amaxz, float bminx, float bmaxx, float bminy, float bmaxy, float bminz, float bmaxz, float *x, float *y, float *z)
+static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *normalz)
 {
 
-    float diffx;
-    float diffy;
-    float diffz;
-    float xneg = bminx  + 1.0 - aminx;
-    float xpos = bminx - amaxx;
-    float yneg = bminy  + 1.0 - aminy;
-    float ypos = bminy - amaxy;
-    float zneg = bminz  + 1.0 - aminz;
-    float zpos = bminz - amaxz;
+    float xInvEntry, yInvEntry, zInvEntry;
+    float xInvExit, yInvExit, zInvExit;
 
-/*
-    if (abs(xneg) < abs(xpos))
-        diffx = xneg;
+    if (b1.vx > 0.0f)
+    {
+
+        xInvEntry = b2.x - (b1.x + b1.lx);
+        xInvExit = (b2.x + b2.lx) - b1.x;
+
+    }
+
     else
-        diffx = xpos;
+    {
 
-    if (abs(zneg) < abs(zpos))
-        diffz = zneg;
+        xInvEntry = (b2.x + b2.lx) - b1.x;
+        xInvExit = b2.x - (b1.x + b1.lx);
+
+    }
+
+    if (b1.vy > 0.0f)
+    {
+
+        yInvEntry = b2.y - (b1.y + b1.ly);
+        yInvExit = (b2.y + b2.ly) - b1.y;
+
+    }
+
     else
-        diffz = zpos;
+    {
 
-    if (abs(diffz) < abs(diffx))
-        *x += diffx;
+        yInvEntry = (b2.y + b2.ly) - b1.y;
+        yInvExit = b2.y - (b1.y + b1.ly);
+
+    }
+
+    if (b1.vz > 0.0f)
+    {
+
+        zInvEntry = b2.z - (b1.z + b1.lz);
+        zInvExit = (b2.z + b2.lz) - b1.z;
+
+    }
+
     else
-        *z += diffz;
-*/
+    {
 
+        zInvEntry = (b2.z + b2.lz) - b1.z;
+        zInvExit = b2.z - (b1.z + b1.lz);
 
+    }
 
+    float xEntry, yEntry, zEntry;
+    float xExit, yExit, zExit;
 
-    /* X+ Z+ */
+    if (b1.vx == 0.0f)
+    {
 
-    if (xpos > zpos)
-        *x += xpos;
+        xEntry = -50000;
+        xExit = 50000;
+
+    }
+
     else
-        *z += zpos;
+    {
 
-    /* X+ Z- */
+        xEntry = xInvEntry / b1.vx;
+        xExit = xInvExit / b1.vx;
 
-/*
-    if (xneg < zneg)
-        *x += xneg;
+    }
+
+    if (b1.vy == 0.0f)
+    {
+
+        yEntry = -50000;
+        yExit = 50000;
+
+    }
+
     else
-        *z += zneg;
-*/
+    {
+
+        yEntry = yInvEntry / b1.vy;
+        yExit = yInvExit / b1.vy;
+
+    }
+
+    if (b1.vz == 0.0f)
+    {
+
+        zEntry = -50000;
+        zExit = 50000;
+
+    }
+
+    else
+    {
+
+        zEntry = zInvEntry / b1.vz;
+        zExit = zInvExit / b1.vz;
+
+    }
+
+    float entryTime = MAX(xEntry, zEntry);
+    float exitTime = MIN(xExit, zExit);
+
+    if (xEntry > zEntry)
+    {
+
+        if (xInvEntry < 0.0f)
+        {
+
+            *normalx = 1.0f;
+            *normalz = 0.0f;
+
+        }
+
+        else
+        {
+
+            *normalx = -1.0f;
+            *normalz = 0.0f;
+
+        }
+
+    }
+
+    else
+    {
+
+        if (zInvEntry < 0.0f)
+        {
+
+            *normalx = 0.0f;
+            *normalz = 1.0f;
+
+        }
+
+        else
+        {
+
+            *normalx = 0.0f;
+            *normalz = -1.0f;
+
+        }
+
+    }
+
+    return entryTime;
 
 }
 
-static int collide(int height, float *x, float *y, float *z)
+static int collide(int height, Player *player)
 {
 
-    int p = chunked(*x);
-    int q = chunked(*z);
+    int bx = (int)(player->x);
+    int by = (int)(player->y);
+    int bz = (int)(player->z);
+
+    Box box;
+    box.x = player->x + 0.25;
+    box.y = player->y;
+    box.z = player->z + 0.25;
+    box.lx = 0.5;
+    box.ly = 1.0;
+    box.lz = 0.5;
+    box.vx = player->vx;
+    box.vy = player->vy;
+    box.vz = player->vz;
+
+    for (int kx = -1; kx <= 1; kx++)
+    {
+
+        for (int ky = -1; ky <= 1; ky++)
+        {
+
+            for (int kz = -1; kz <= 1; kz++)
+            {
+
+                int cx = bx + kx;
+                int cy = by + ky;
+                int cz = bz + kz;
+
+                Chunk *chunk = find_chunk(chunked(cx), chunked(cz));
+                Map *map = &chunk->map;
+
+                if (!is_obstacle(map_get(map, cx, cy, cz)))
+                    continue;
+
+                Box block;
+                block.x = cx;
+                block.y = cy;
+                block.z = cz;
+                block.lx = 1.0;
+                block.ly = 1.0;
+                block.lz = 1.0;
+                block.vx = 0.0;
+                block.vy = 0.0;
+                block.vz = 0.0;
+
+                if (!aabbcheck(&box, &block))
+                    continue;
+
+                float normalx;
+                float normaly;
+                float normalz;
+
+                aabbsweep(box, block, &normalx, &normaly, &normalz);
+
+                player->x -= (player->vx) * abs(normalx);
+                player->z -= (player->vz) * abs(normalz);
+
+            }
+
+        }
+
+    }
+
+
+
+    /* HANDLE Y */
+
+    int p = chunked(player->x);
+    int q = chunked(player->z);
     Chunk *chunk = find_chunk(p, q);
     int result = 0;
 
@@ -734,108 +929,10 @@ static int collide(int height, float *x, float *y, float *z)
 
     Map *map = &chunk->map;
 
-    int bx = (int)(*x);
-    int by = (int)(*y);
-    int bz = (int)(*z);
-
-    float aminx = *x + 0.25;
-    float amaxx = *x + 0.75;
-    float aminy = *y + 0.00;
-    float amaxy = *y + 1.00;
-    float aminz = *z + 0.25;
-    float amaxz = *z + 0.75;
-
-    int cx;
-    int cy;
-    int cz;
-
-    /* X=0 Y=0 Z=0 */
-
-    cx = bx;
-    cy = by;
-    cz = bz;
-
-    if (bx < 0)
-        cx--;
-
-    if (bz < 0)
-        cz--;
-
-    chunk = find_chunk(chunked(cx), chunked(cz));
-    map = &chunk->map;
-
-    if (aabbvsaabb(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, map))
-        adjust(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, x, y, z);
-
-    /* X=0 Y=0 Z=1 */
-
-    cx = bx;
-    cy = by;
-    cz = bz + 1;
-
-    if (bx < 0)
-        cx--;
-
-    if (bz < 0)
-        cz--;
-
-    chunk = find_chunk(chunked(cx), chunked(cz));
-    map = &chunk->map;
-
-    if (aabbvsaabb(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, map))
-        adjust(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, x, y, z);
-
-    /* X=1 Y=0 Z=0 */
-
-    cx = bx + 1;
-    cy = by;
-    cz = bz;
-
-    if (bx < 0)
-        cx--;
-
-    if (bz < 0)
-        cz--;
-
-    chunk = find_chunk(chunked(cx), chunked(cz));
-    map = &chunk->map;
-
-    if (aabbvsaabb(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, map))
-        adjust(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, x, y, z);
-
-    /* X=1 Y=0 Z=1 */
-
-    cx = bx + 1;
-    cy = by;
-    cz = bz + 1;
-
-    if (bx < 0)
-        cx--;
-
-    if (bz < 0)
-        cz--;
-
-    chunk = find_chunk(chunked(cx), chunked(cz));
-    map = &chunk->map;
-
-    if (aabbvsaabb(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, map))
-        adjust(aminx, amaxx, aminy, amaxy, aminz, amaxz, cx, cx + 1.0, cy, cy + 1.0, cz, cz + 1.0, x, y, z);
-
-
-
-
-
-
-
-
-
-
-    /* HANDLE Y */
-
-    int nx = (int)(*x);
-    int ny = roundf(*y);
-    int nz = (int)(*z);
-    float py = *y - ny;
+    int nx = (int)(player->x);
+    int ny = roundf(player->y);
+    int nz = (int)(player->z);
+    float py = player->y - ny;
     float pad = 0.25;
 
 
@@ -843,7 +940,7 @@ static int collide(int height, float *x, float *y, float *z)
     if (py < -pad && is_obstacle(map_get(map, nx, ny - 2, nz)))
     {
 
-        *y = ny - pad;
+        player->y = ny - pad;
         result = 1;
 
     }
@@ -851,7 +948,7 @@ static int collide(int height, float *x, float *y, float *z)
     if (py > pad && is_obstacle(map_get(map, nx, ny, nz)))
     {
 
-        *y = ny + pad;
+        player->y = ny + pad;
         result = 1;
 
     }
@@ -1640,20 +1737,6 @@ static int get_block(int x, int y, int z)
 
 }
 
-static void builder_block(int x, int y, int z, int w)
-{
-
-    if (y <= 0 || y >= 256)
-        return;
-
-    if (is_destructable(get_block(x, y, z)))
-        set_block(x, y, z, 0);
-
-    if (w)
-        set_block(x, y, z, w);
-
-}
-
 static int render_chunks(Attrib *attrib, Player *player)
 {
 
@@ -1797,306 +1880,10 @@ static void add_message(const char *text)
 
 }
 
-static void copy()
-{
-
-    memcpy(&g->copy0, &g->block0, sizeof(Block));
-    memcpy(&g->copy1, &g->block1, sizeof(Block));
-
-}
-
-static void paste()
-{
-
-    Block *c1 = &g->copy1;
-    Block *c2 = &g->copy0;
-    Block *p1 = &g->block1;
-    Block *p2 = &g->block0;
-    int scx = SIGN(c2->x - c1->x);
-    int scz = SIGN(c2->z - c1->z);
-    int spx = SIGN(p2->x - p1->x);
-    int spz = SIGN(p2->z - p1->z);
-    int oy = p1->y - c1->y;
-    int dx = ABS(c2->x - c1->x);
-    int dz = ABS(c2->z - c1->z);
-
-    for (int y = 0; y < 256; y++)
-    {
-
-        for (int x = 0; x <= dx; x++)
-        {
-
-            for (int z = 0; z <= dz; z++)
-            {
-
-                int w = get_block(c1->x + x * scx, y, c1->z + z * scz);
-
-                builder_block(p1->x + x * spx, y + oy, p1->z + z * spz, w);
-
-            }
-
-        }
-
-    }
-
-}
-
-static void array(Block *b1, Block *b2, int xc, int yc, int zc)
-{
-
-    if (b1->w != b2->w)
-        return;
-
-    int w = b1->w;
-    int dx = b2->x - b1->x;
-    int dy = b2->y - b1->y;
-    int dz = b2->z - b1->z;
-
-    xc = dx ? xc : 1;
-    yc = dy ? yc : 1;
-    zc = dz ? zc : 1;
-
-    for (int i = 0; i < xc; i++)
-    {
-
-        int x = b1->x + dx * i;
-
-        for (int j = 0; j < yc; j++)
-        {
-
-            int y = b1->y + dy * j;
-
-            for (int k = 0; k < zc; k++)
-            {
-
-                int z = b1->z + dz * k;
-
-                builder_block(x, y, z, w);
-
-            }
-
-        }
-
-    }
-
-}
-
-static void cube(Block *b1, Block *b2, int fill)
-{
-
-    if (b1->w != b2->w)
-        return;
-
-    int w = b1->w;
-    int x1 = MIN(b1->x, b2->x);
-    int y1 = MIN(b1->y, b2->y);
-    int z1 = MIN(b1->z, b2->z);
-    int x2 = MAX(b1->x, b2->x);
-    int y2 = MAX(b1->y, b2->y);
-    int z2 = MAX(b1->z, b2->z);
-    int a = (x1 == x2) + (y1 == y2) + (z1 == z2);
-
-    for (int x = x1; x <= x2; x++)
-    {
-
-        for (int y = y1; y <= y2; y++)
-        {
-
-            for (int z = z1; z <= z2; z++)
-            {
-
-                if (!fill)
-                {
-
-                    int n = 0;
-
-                    n += x == x1 || x == x2;
-                    n += y == y1 || y == y2;
-                    n += z == z1 || z == z2;
-
-                    if (n <= a)
-                        continue;
-
-                }
-
-                builder_block(x, y, z, w);
-
-            }
-
-        }
-
-    }
-
-}
-
-static void sphere(Block *center, int radius, int fill, int fx, int fy, int fz)
-{
-
-    static const float offsets[8][3] = {
-        {-0.5, -0.5, -0.5},
-        {-0.5, -0.5, 0.5},
-        {-0.5, 0.5, -0.5},
-        {-0.5, 0.5, 0.5},
-        {0.5, -0.5, -0.5},
-        {0.5, -0.5, 0.5},
-        {0.5, 0.5, -0.5},
-        {0.5, 0.5, 0.5}
-    };
-
-    int cx = center->x;
-    int cy = center->y;
-    int cz = center->z;
-    int w = center->w;
-
-    for (int x = cx - radius; x <= cx + radius; x++)
-    {
-
-        if (fx && x != cx)
-            continue;
-
-        for (int y = cy - radius; y <= cy + radius; y++)
-        {
-
-            if (fy && y != cy)
-                continue;
-
-            for (int z = cz - radius; z <= cz + radius; z++)
-            {
-
-                if (fz && z != cz)
-                    continue;
-
-                int inside = 0;
-                int outside = fill;
-
-                for (int i = 0; i < 8; i++)
-                {
-
-                    float dx = x + offsets[i][0] - cx;
-                    float dy = y + offsets[i][1] - cy;
-                    float dz = z + offsets[i][2] - cz;
-                    float d = sqrtf(dx * dx + dy * dy + dz * dz);
-
-                    if (d < radius)
-                        inside = 1;
-                    else
-                        outside = 1;
-                }
-
-                if (inside && outside)
-                    builder_block(x, y, z, w);
-
-            }
-
-        }
-
-    }
-
-}
-
-static void cylinder(Block *b1, Block *b2, int radius, int fill)
-{
-
-    if (b1->w != b2->w)
-        return;
-
-    int w = b1->w;
-    int x1 = MIN(b1->x, b2->x);
-    int y1 = MIN(b1->y, b2->y);
-    int z1 = MIN(b1->z, b2->z);
-    int x2 = MAX(b1->x, b2->x);
-    int y2 = MAX(b1->y, b2->y);
-    int z2 = MAX(b1->z, b2->z);
-    int fx = x1 != x2;
-    int fy = y1 != y2;
-    int fz = z1 != z2;
-
-    if (fx + fy + fz != 1)
-        return;
-
-    Block block = {x1, y1, z1, w};
-
-    if (fx)
-    {
-
-        for (int x = x1; x <= x2; x++)
-        {
-
-            block.x = x;
-
-            sphere(&block, radius, fill, 1, 0, 0);
-
-        }
-
-    }
-
-    if (fy)
-    {
-
-        for (int y = y1; y <= y2; y++)
-        {
-
-            block.y = y;
-
-            sphere(&block, radius, fill, 0, 1, 0);
-
-        }
-
-    }
-
-    if (fz)
-    {
-
-        for (int z = z1; z <= z2; z++)
-        {
-
-            block.z = z;
-
-            sphere(&block, radius, fill, 0, 0, 1);
-
-        }
-
-    }
-
-}
-
-static void tree(Block *block)
-{
-
-    int bx = block->x;
-    int by = block->y;
-    int bz = block->z;
-
-    for (int y = by + 3; y < by + 8; y++)
-    {
-
-        for (int dx = -3; dx <= 3; dx++)
-        {
-
-            for (int dz = -3; dz <= 3; dz++)
-            {
-
-                int dy = y - (by + 4);
-                int d = (dx * dx) + (dy * dy) + (dz * dz);
-
-                if (d < 11)
-                    builder_block(bx + dx, y, bz + dz, 15);
-
-            }
-
-        }
-
-    }
-
-    for (int y = by; y < by + 7; y++)
-        builder_block(bx, y, bz, 5);
-
-}
-
 static void parse_command(const char *buffer, int forward)
 {
 
-    int radius, count, xc, yc, zc;
+    int radius;
 
     if (sscanf(buffer, "/view %d", &radius) == 1)
     {
@@ -2118,57 +1905,6 @@ static void parse_command(const char *buffer, int forward)
 
     }
 
-    else if (strcmp(buffer, "/copy") == 0) {
-        copy();
-    }
-    else if (strcmp(buffer, "/paste") == 0) {
-        paste();
-    }
-    else if (strcmp(buffer, "/tree") == 0) {
-        tree(&g->block0);
-    }
-    else if (sscanf(buffer, "/array %d %d %d", &xc, &yc, &zc) == 3) {
-        array(&g->block1, &g->block0, xc, yc, zc);
-    }
-    else if (sscanf(buffer, "/array %d", &count) == 1) {
-        array(&g->block1, &g->block0, count, count, count);
-    }
-    else if (strcmp(buffer, "/fcube") == 0) {
-        cube(&g->block0, &g->block1, 1);
-    }
-    else if (strcmp(buffer, "/cube") == 0) {
-        cube(&g->block0, &g->block1, 0);
-    }
-    else if (sscanf(buffer, "/fsphere %d", &radius) == 1) {
-        sphere(&g->block0, radius, 1, 0, 0, 0);
-    }
-    else if (sscanf(buffer, "/sphere %d", &radius) == 1) {
-        sphere(&g->block0, radius, 0, 0, 0, 0);
-    }
-    else if (sscanf(buffer, "/fcirclex %d", &radius) == 1) {
-        sphere(&g->block0, radius, 1, 1, 0, 0);
-    }
-    else if (sscanf(buffer, "/circlex %d", &radius) == 1) {
-        sphere(&g->block0, radius, 0, 1, 0, 0);
-    }
-    else if (sscanf(buffer, "/fcircley %d", &radius) == 1) {
-        sphere(&g->block0, radius, 1, 0, 1, 0);
-    }
-    else if (sscanf(buffer, "/circley %d", &radius) == 1) {
-        sphere(&g->block0, radius, 0, 0, 1, 0);
-    }
-    else if (sscanf(buffer, "/fcirclez %d", &radius) == 1) {
-        sphere(&g->block0, radius, 1, 0, 0, 1);
-    }
-    else if (sscanf(buffer, "/circlez %d", &radius) == 1) {
-        sphere(&g->block0, radius, 0, 0, 0, 1);
-    }
-    else if (sscanf(buffer, "/fcylinder %d", &radius) == 1) {
-        cylinder(&g->block0, &g->block1, radius, 1);
-    }
-    else if (sscanf(buffer, "/cylinder %d", &radius) == 1) {
-        cylinder(&g->block0, &g->block1, radius, 0);
-    }
 }
 
 static void addlight()
@@ -2332,7 +2068,7 @@ static void onkey(GLFWwindow *window, int key, int scancode, int action, int mod
 
         if (g->typing)
         {
-        
+
             g->suppress_char = 1;
 
             strncat(g->typing_buffer, buffer, MAX_TEXT_LENGTH - strlen(g->typing_buffer) - 1);
@@ -2557,16 +2293,14 @@ static void handle_movement(double dt)
 {
 
     static float dy = 0;
-    float vx;
-    float vy;
-    float vz;
+    float speed = g->flying ? 32 : 8;
+    int step = 8;
+    float ut = dt / step;
     int sz = 0;
     int sx = 0;
-    
+
     if (!g->typing)
     {
-
-        float m = dt * 1.0;
 
         g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
         g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
@@ -2584,20 +2318,23 @@ static void handle_movement(double dt)
             sx++;
 
         if (glfwGetKey(g->window, GLFW_KEY_LEFT))
-            g->player.rx -= m;
+            g->player.rx -= 1.0;
 
         if (glfwGetKey(g->window, GLFW_KEY_RIGHT))
-            g->player.rx += m;
+            g->player.rx += 1.0;
 
         if (glfwGetKey(g->window, GLFW_KEY_UP))
-            g->player.ry += m;
+            g->player.ry += 1.0;
 
         if (glfwGetKey(g->window, GLFW_KEY_DOWN))
-            g->player.ry -= m;
+            g->player.ry -= 1.0;
 
     }
 
-    get_motion_vector(g->flying, sz, sx, g->player.rx, g->player.ry, &vx, &vy, &vz);
+    if (g->flying)
+        get_motion_vector_flying(sz, sx, &g->player);
+    else
+        get_motion_vector_normal(sz, sx, &g->player);
 
     if (!g->typing)
     {
@@ -2606,22 +2343,25 @@ static void handle_movement(double dt)
         {
 
             if (g->flying)
-                vy = 1;
+                g->player.vy = 1;
             else if (dy == 0)
-                dy = 8;
+                dy = 2.0;
+
+        }
+
+        if (glfwGetKey(g->window, CRAFT_KEY_CROUCH))
+        {
+
+            if (g->flying)
+                g->player.vy = -1;
 
         }
 
     }
 
-    float speed = g->flying ? 20 : 5;
-    int estimate = roundf(sqrtf(powf(vx * speed, 2) + powf(vy * speed + ABS(dy) * 2, 2) + powf(vz * speed, 2)) * dt * 8);
-    int step = MAX(8, estimate);
-    float ut = dt / step;
-
-    vx = vx * ut * speed;
-    vy = vy * ut * speed;
-    vz = vz * ut * speed;
+    g->player.vx = g->player.vx * ut * speed;
+    g->player.vy = g->player.vy * ut * speed;
+    g->player.vz = g->player.vz * ut * speed;
 
     for (int i = 0; i < step; i++)
     {
@@ -2632,20 +2372,21 @@ static void handle_movement(double dt)
             dy = 0;
 
         }
-        
+
         else
         {
 
-            dy -= ut * 25;
+            dy -= ut * 8.0;
             dy = MAX(dy, -250);
 
         }
 
-        g->player.x += vx;
-        g->player.y += vy + dy * ut;
-        g->player.z += vz;
+        g->player.vy += dy * ut;
+        g->player.x += g->player.vx;
+        g->player.y += g->player.vy;
+        g->player.z += g->player.vz;
 
-        if (collide(2, &g->player.x, &g->player.y, &g->player.z))
+        if (collide(2, &g->player))
             dy = 0;
 
     }
