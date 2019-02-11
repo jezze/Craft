@@ -77,6 +77,7 @@ typedef struct
     float vz;
     float rx;
     float ry;
+    float dy;
 
 } Player;
 
@@ -2292,7 +2293,6 @@ static void handle_mouse_input()
 static void handle_movement(double dt)
 {
 
-    static float dy = 0;
     float speed = g->flying ? 32 : 8;
     int step = 8;
     float ut = dt / step;
@@ -2344,8 +2344,8 @@ static void handle_movement(double dt)
 
             if (g->flying)
                 g->player.vy = 1;
-            else if (dy == 0)
-                dy = 2.0;
+            else if (g->player.dy == 0)
+                g->player.dy = 2.0;
 
         }
 
@@ -2369,25 +2369,25 @@ static void handle_movement(double dt)
         if (g->flying)
         {
 
-            dy = 0;
+            g->player.dy = 0;
 
         }
 
         else
         {
 
-            dy -= ut * 8.0;
-            dy = MAX(dy, -250);
+            g->player.dy -= ut * 8.0;
+            g->player.dy = MAX(g->player.dy, -250);
 
         }
 
-        g->player.vy += dy * ut;
+        g->player.vy += g->player.dy * ut;
         g->player.x += g->player.vx;
         g->player.y += g->player.vy;
         g->player.z += g->player.vz;
 
         if (collide(2, &g->player))
-            dy = 0;
+            g->player.dy = 0;
 
     }
 
