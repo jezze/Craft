@@ -801,7 +801,7 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
     }
 
-    if (xEntry > zEntry && xEntry > yEntry)
+    if (xEntry > yEntry && xEntry > zEntry)
     {
 
         if (xInvEntry < 0.0f)
