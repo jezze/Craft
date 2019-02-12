@@ -1317,17 +1317,6 @@ static void compute_chunk(Chunk *chunk)
 
 }
 
-static void gen_chunk_buffer(Chunk *chunk)
-{
-
-    compute_chunk(chunk);
-    del_buffer(chunk->buffer);
-
-    chunk->buffer = gen_faces(10, chunk->faces, chunk->data);
-    chunk->dirty = 0;
-
-}
-
 static void createworld(Map *map, int p, int q)
 {
 
@@ -1542,7 +1531,11 @@ static void load_chunks(Player *player, int radius, int max)
             if (chunk && chunk->dirty)
             {
 
-                gen_chunk_buffer(chunk);
+                compute_chunk(chunk);
+                del_buffer(chunk->buffer);
+
+                chunk->buffer = gen_faces(10, chunk->faces, chunk->data);
+                chunk->dirty = 0;
 
                 if (--max <= 0)
                     return;
