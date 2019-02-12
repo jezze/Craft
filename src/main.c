@@ -337,7 +337,7 @@ static GLuint gen_sky_buffer()
 static GLuint gen_cube_buffer(float x, float y, float z, float n, int w)
 {
 
-    GLfloat *data = malloc_faces(10, 6);
+    GLfloat data[6 * 10 * 6];
 
     float ao[6][4] = {0};
     float light[6][4] = {
@@ -351,20 +351,20 @@ static GLuint gen_cube_buffer(float x, float y, float z, float n, int w)
 
     make_cube(data, ao, light, 1, 1, 1, 1, 1, 1, x, y, z, n, w);
 
-    return gen_faces(10, 6, data);
+    return gen_buffer(sizeof(data), data);
 
 }
 
 static GLuint gen_plant_buffer(float x, float y, float z, float n, int w)
 {
 
-    GLfloat *data = malloc_faces(10, 4);
+    GLfloat data[6 * 10 * 4];
     float ao = 0;
     float light = 1;
 
     make_plant(data, ao, light, x, y, z, n, w, 45);
 
-    return gen_faces(10, 4, data);
+    return gen_buffer(sizeof(data), data);
 
 }
 
