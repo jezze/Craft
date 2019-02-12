@@ -828,7 +828,9 @@ static void player_collide(Player *player, int x, int y, int z)
 
                 aabbsweep(box, block, &normalx, &normaly, &normalz);
 
-                player->box.y = (block.y + block.ly);
+                box.vx = box.vx * normalx;
+                box.vy = box.vy * normaly;
+                box.vz = box.vz * normalz;
 
             }
 
