@@ -177,57 +177,6 @@ static void get_sight_vector(float rx, float ry, float *vx, float *vy, float *vz
 
 }
 
-static void get_motion_vector_flying(int sz, int sx, Player *player)
-{
-
-    player->box.vx = 0;
-    player->box.vy = 0;
-    player->box.vz = 0;
-
-    if (!sz && !sx)
-        return;
-
-    float strafe = atan2f(sz, sx);
-    float m = cosf(player->ry);
-    float y = sinf(player->ry);
-
-    if (sx)
-    {
-
-        if (!sz)
-            y = 0;
-
-        m = 1;
-
-    }
-
-    if (sz > 0)
-        y = -y;
-
-    player->box.vx = cosf(player->rx + strafe) * m;
-    player->box.vy = y;
-    player->box.vz = sinf(player->rx + strafe) * m;
-
-}
-
-static void get_motion_vector_normal(int sz, int sx, Player *player)
-{
-
-    player->box.vx = 0;
-    player->box.vy = 0;
-    player->box.vz = 0;
-
-    if (!sz && !sx)
-        return;
-
-    float strafe = atan2f(sz, sx);
-
-    player->box.vx = cosf(player->rx + strafe);
-    player->box.vy = 0;
-    player->box.vz = sinf(player->rx + strafe);
-
-}
-
 static GLuint gen_buffer(GLsizei size, GLfloat *data)
 {
 
@@ -2082,15 +2031,41 @@ static void handle_movement(double dt)
         if (glfwGetKey(g->window, CRAFT_KEY_RIGHT))
             sx++;
 
-    }
+        if (sx || sz)
+        {
 
-    if (g->flying)
-        get_motion_vector_flying(sz, sx, &g->player);
-    else
-        get_motion_vector_normal(sz, sx, &g->player);
+            float strafe = atan2f(sz, sx);
 
-    if (!g->typing)
-    {
+            g->player.box.vx = cosf(g->player.rx + strafe);
+            g->player.box.vy = 0;
+            g->player.box.vz = sinf(g->player.rx + strafe);
+
+            if (g->flying)
+            {
+
+                float m = cosf(g->player.ry);
+                float y = sinf(g->player.ry);
+
+                if (sx)
+                {
+
+                    if (!sz)
+                        y = 0;
+
+                    m = 1;
+
+                }
+
+                if (sz > 0)
+                    y = -y;
+
+                g->player.box.vx *= m;
+                g->player.box.vy = y;
+                g->player.box.vz *= m;
+
+            }
+
+        }
 
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP))
         {
