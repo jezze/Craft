@@ -952,19 +952,19 @@ static int player_intersects_block(int height, Player *player, int hx, int hy, i
 
 }
 
-static void dirty_chunk(Chunk *chunk)
+static void dirty_chunk(Chunk *chunk, int radius)
 {
 
-    for (int dp = -1; dp <= 1; dp++)
+    for (int dp = -radius; dp <= radius; dp++)
     {
 
-        for (int dq = -1; dq <= 1; dq++)
+        for (int dq = -radius; dq <= radius; dq++)
         {
 
-            Chunk *other = find_chunk(chunk->p + dp, chunk->q + dq);
+            Chunk *neighbour = find_chunk(chunk->p + dp, chunk->q + dq);
 
-            if (other)
-                other->dirty = 1;
+            if (neighbour)
+                neighbour->dirty = 1;
 
         }
 
@@ -1575,16 +1575,18 @@ static void load_chunks(Player *player, int radius, int max)
 
 }
 
-static void setblock2(int p, int q, int x, int y, int z, int w)
+static void setblock(int x, int y, int z, int w)
 {
 
+    int p = chunked(x);
+    int q = chunked(z);
     Chunk *chunk = find_chunk(p, q);
 
     if (chunk)
     {
 
         if (map_set(&chunk->map, x, y, z, w))
-            dirty_chunk(chunk);
+            dirty_chunk(chunk, 1);
 
     }
 
@@ -1592,19 +1594,9 @@ static void setblock2(int p, int q, int x, int y, int z, int w)
     {
 
         if (map_set(&chunk->lights, x, y, z, w))
-            dirty_chunk(chunk);
+            dirty_chunk(chunk, 1);
 
     }
-
-}
-
-static void setblock(int x, int y, int z, int w)
-{
-
-    int p = chunked(x);
-    int q = chunked(z);
-
-    setblock2(p, q, x, y, z, w);
 
 }
 
@@ -1821,7 +1813,7 @@ static void addlight(void)
 
             map_set(&chunk->lights, hx, hy, hz, w ? 0 : 15);
 
-            dirty_chunk(chunk);
+            dirty_chunk(chunk, 1);
 
         }
 
