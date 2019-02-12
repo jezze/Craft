@@ -32,15 +32,6 @@ typedef struct
 typedef struct
 {
 
-    unsigned int fps;
-    unsigned int frames;
-    double since;
-
-} FPS;
-
-typedef struct
-{
-
     Map map;
     Map lights;
     int p;
@@ -122,8 +113,9 @@ typedef struct
     float fov;
     int mode_changed;
     int day_length;
-    int time_changed;
-    FPS fps;
+    unsigned int fps;
+    unsigned int frames;
+    double since;
     Attrib block_attrib;
     Attrib line_attrib;
     Attrib text_attrib;
@@ -2439,7 +2431,9 @@ int main(int argc, char **argv)
     int running = 1;
 
     g->day_length = DAY_LENGTH;
-    g->time_changed = 1;
+    g->fps = 0;
+    g->frames = 0;
+    g->since = 0;
 
     glfwSetTime(g->day_length / 3.0);
 
@@ -2455,20 +2449,10 @@ int main(int argc, char **argv)
     while (running)
     {
 
-        if (g->time_changed)
-        {
-
-            g->time_changed = 0;
-            last_update = glfwGetTime();
-
-            memset(&g->fps, 0, sizeof(FPS));
-
-        }
-
-        g->fps.frames++;
+        g->frames++;
 
         double now = glfwGetTime();
-        double elapsed = now - g->fps.since;
+        double elapsed = now - g->since;
         double dt = now - previous;
 
         previous = now;
@@ -2479,9 +2463,9 @@ int main(int argc, char **argv)
         if (elapsed >= 1)
         {
 
-            g->fps.fps = round(g->fps.frames / elapsed);
-            g->fps.frames = 0;
-            g->fps.since = now;
+            g->fps = round(g->frames / elapsed);
+            g->frames = 0;
+            g->since = now;
 
         }
 
@@ -2507,7 +2491,7 @@ int main(int argc, char **argv)
         hour = hour % 12;
         hour = hour ? hour : 12;
 
-        snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) %d%cm %dfps", chunked(g->player.box.x), chunked(g->player.box.z), g->player.box.x, g->player.box.y, g->player.box.z, hour, am_pm, g->fps.fps);
+        snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) %d%cm %dfps", chunked(g->player.box.x), chunked(g->player.box.z), g->player.box.x, g->player.box.y, g->player.box.z, hour, am_pm, g->fps);
         render_text(&g->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
         ty -= ts * 2;
