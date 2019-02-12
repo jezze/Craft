@@ -1218,12 +1218,13 @@ static void compute_chunk(Chunk *chunk)
 static void createworld(Map *map, int p, int q)
 {
 
-    int pad = 0;
+    unsigned int dx;
+    unsigned int dz;
 
-    for (int dx = -pad; dx < CHUNK_SIZE + pad; dx++)
+    for (dx = 0; dx < CHUNK_SIZE; dx++)
     {
 
-        for (int dz = -pad; dz < CHUNK_SIZE + pad; dz++)
+        for (dz = 0; dz < CHUNK_SIZE; dz++)
         {
 
             int x = p * CHUNK_SIZE + dx;
@@ -1232,17 +1233,18 @@ static void createworld(Map *map, int p, int q)
             float g = noise_simplex2(-x * 0.01, -z * 0.01, 2, 0.9, 2);
             int mh = g * 32 + 16;
             int h = f * mh;
+            int y;
 
             if (h <= 12)
                 h = 12;
 
-            for (int y = 0; y < 10; y++)
+            for (y = 0; y < 10; y++)
                 map_set(map, x, y, z, CEMENT);
 
-            for (int y = 10; y < 12; y++)
+            for (y = 10; y < 12; y++)
                 map_set(map, x, y, z, SAND);
 
-            for (int y = 12; y < h - 1; y++)
+            for (y = 12; y < h - 1; y++)
                 map_set(map, x, y, z, DIRT);
 
             if (h > 12)
@@ -1275,7 +1277,7 @@ static void createworld(Map *map, int p, int q)
                 if (ok && noise_simplex2(x, z, 6, 0.5, 2) > 0.84)
                 {
 
-                    for (int y = h + 3; y < h + 8; y++)
+                    for (y = h + 3; y < h + 8; y++)
                     {
 
                         for (int ox = -3; ox <= 3; ox++)
@@ -1295,14 +1297,14 @@ static void createworld(Map *map, int p, int q)
 
                     }
 
-                    for (int y = h; y < h + 7; y++)
+                    for (y = h; y < h + 7; y++)
                         map_set(map, x, y, z, WOOD);
 
                 }
 
             }
 
-            for (int y = 64; y < 72; y++)
+            for (y = 64; y < 72; y++)
             {
 
                 if (noise_simplex3(x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
