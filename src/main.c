@@ -2072,8 +2072,6 @@ static void handle_movement(double dt)
 
             if (g->flying)
                 g->player.box.vy = 1;
-            else if (g->player.dy == 0)
-                g->player.dy = 2.0;
 
         }
 
