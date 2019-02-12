@@ -878,14 +878,12 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
 }
 
-static int collide(Player *player)
+static void collide(Player *player, int x, int y, int z)
 {
 
-    int bx = (int)(player->x);
-    int by = (int)(player->y);
-    int bz = (int)(player->z);
-
     Box box;
+    Box block;
+
     box.x = player->x + 0.25;
     box.y = player->y;
     box.z = player->z + 0.25;
@@ -895,6 +893,15 @@ static int collide(Player *player)
     box.vx = player->vx;
     box.vy = player->vy;
     box.vz = player->vz;
+    block.x = x;
+    block.y = y;
+    block.z = z;
+    block.lx = 1.0;
+    block.ly = 1.0;
+    block.lz = 1.0;
+    block.vx = 0.0;
+    block.vy = 0.0;
+    block.vz = 0.0;
 
     for (int kx = -1; kx <= 1; kx++)
     {
@@ -905,33 +912,28 @@ static int collide(Player *player)
             for (int kz = -1; kz <= 1; kz++)
             {
 
-                int cx = bx + kx;
-                int cy = by + ky;
-                int cz = bz + kz;
-
-                Chunk *chunk = find_chunk(chunked(cx), chunked(cz));
-                Map *map = &chunk->map;
-
-                if (!is_obstacle(map_get(map, cx, cy, cz)))
-                    continue;
-
-                Box block;
-                block.x = cx;
-                block.y = cy;
-                block.z = cz;
-                block.lx = 1.0;
-                block.ly = 1.0;
-                block.lz = 1.0;
-                block.vx = 0.0;
-                block.vy = 0.0;
-                block.vz = 0.0;
-
-                if (!aabbcheck(&box, &block))
-                    continue;
-
+                Chunk *chunk;
+                Map *map;
                 float normalx;
                 float normaly;
                 float normalz;
+
+                block.x = x + kx;
+                block.y = y + ky;
+                block.z = z + kz;
+
+                chunk = find_chunk(chunked(block.x), chunked(block.z));
+
+                if (!chunk)
+                    continue;
+
+                map = &chunk->map;
+
+                if (!is_obstacle(map_get(map, block.x, block.y, block.z)))
+                    continue;
+
+                if (!aabbcheck(&box, &block))
+                    continue;
 
                 aabbsweep(box, block, &normalx, &normaly, &normalz);
 
@@ -942,8 +944,6 @@ static int collide(Player *player)
         }
 
     }
-
-    return 0;
 
 }
 
@@ -2375,7 +2375,7 @@ static void handle_movement(double dt)
         g->player.y += g->player.vy;
         g->player.z += g->player.vz;
 
-        collide(&g->player);
+        collide(&g->player, g->player.x, g->player.y, g->player.z);
 
     }
 
