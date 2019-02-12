@@ -1730,17 +1730,17 @@ static int get_block(int x, int y, int z)
 
 }
 
-static int render_chunks(Attrib *attrib, Player *player)
+static void render_chunks(Attrib *attrib, Player *player)
 {
 
     int p = chunked(player->box.x);
     int q = chunked(player->box.z);
     float matrix[16];
     float planes[6][4];
-    int result = 0;
 
     set_matrix_3d(matrix, g->width, g->height, player->box.x, player->box.y, player->box.z, player->rx, player->ry, g->fov, g->ortho, g->render_radius);
     frustum_planes(planes, g->render_radius, matrix);
+    glClear(GL_DEPTH_BUFFER_BIT);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, player->box.x, player->box.y, player->box.z);
@@ -1764,11 +1764,7 @@ static int render_chunks(Attrib *attrib, Player *player)
 
         draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
 
-        result += chunk->faces;
-
     }
-
-    return result;
 
 }
 
@@ -1778,6 +1774,8 @@ static void render_sky(Attrib *attrib, Player *player, GLuint buffer)
     float matrix[16];
 
     set_matrix_3d(matrix, g->width, g->height, 0, 0, 0, player->rx, player->ry, g->fov, 0, g->render_radius);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_DEPTH_BUFFER_BIT);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 2);
@@ -1792,6 +1790,7 @@ static void render_crosshairs(Attrib *attrib)
     float matrix[16];
 
     set_matrix_2d(matrix, g->width, g->height);
+    glClear(GL_DEPTH_BUFFER_BIT);
     glUseProgram(attrib->program);
     glLineWidth(4 * g->scale);
     glEnable(GL_COLOR_LOGIC_OP);
@@ -1811,6 +1810,7 @@ static void render_item(Attrib *attrib)
     float matrix[16];
 
     set_matrix_item(matrix, g->width, g->height, g->scale);
+    glClear(GL_DEPTH_BUFFER_BIT);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, 0, 0, 5);
@@ -2601,23 +2601,12 @@ int main(int argc, char **argv)
         dt = MIN(dt, 0.2);
         dt = MAX(dt, 0.0);
 
-        /* Input */
         handle_movement(dt);
-
-        /* Logic */
         delete_chunks();
         load_chunks(&g->player, 1, 9);
         load_chunks(&g->player, g->render_radius, 1);
-
-        /* Rendering */
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClear(GL_DEPTH_BUFFER_BIT);
         render_sky(&g->sky_attrib, &g->player, sky_buffer);
-        glClear(GL_DEPTH_BUFFER_BIT);
-
-        int face_count = render_chunks(&g->block_attrib, &g->player);
-
-        glClear(GL_DEPTH_BUFFER_BIT);
+        render_chunks(&g->block_attrib, &g->player);
         render_crosshairs(&g->line_attrib);
         render_item(&g->block_attrib);
 
@@ -2631,7 +2620,7 @@ int main(int argc, char **argv)
         hour = hour % 12;
         hour = hour ? hour : 12;
 
-        snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d] %d%cm %dfps", chunked(g->player.box.x), chunked(g->player.box.z), g->player.box.x, g->player.box.y, g->player.box.z, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
+        snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) %d%cm %dfps", chunked(g->player.box.x), chunked(g->player.box.z), g->player.box.x, g->player.box.y, g->player.box.z, hour, am_pm, g->fps.fps);
         render_text(&g->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
         ty -= ts * 2;
