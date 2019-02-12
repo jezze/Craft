@@ -120,7 +120,6 @@ typedef struct
     int scale;
     int ortho;
     float fov;
-    int suppress_char;
     int mode_changed;
     int day_length;
     int time_changed;
@@ -646,7 +645,7 @@ static int hit_test(int previous, Player *player, int *bx, int *by, int *bz)
         if (chunk_distance(chunk, p, q) > 1)
             continue;
 
-        hw = _hit_test(&chunk->map, 8, previous, player->box.x, player->box.y, player->box.z, vx, vy, vz, &hx, &hy, &hz);
+        hw = _hit_test(&chunk->map, 16, previous, player->box.x, player->box.y, player->box.z, vx, vy, vz, &hx, &hy, &hz);
 
         if (hw > 0)
         {
@@ -1874,7 +1873,7 @@ static void add_message(const char *text)
 
 }
 
-static void parse_command(const char *buffer, int forward)
+static void parse_command(const char *buffer)
 {
 
     int radius;
@@ -1982,16 +1981,15 @@ static void selectblock()
 static void onkey(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 
-    int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
     int exclusive = glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
 
-    if (action == GLFW_RELEASE)
+    if (action != GLFW_PRESS)
         return;
 
-    if (key == GLFW_KEY_BACKSPACE)
+    if (g->typing)
     {
 
-        if (g->typing)
+        if (key == GLFW_KEY_BACKSPACE)
         {
 
             int n = strlen(g->typing_buffer);
@@ -2001,85 +1999,35 @@ static void onkey(GLFWwindow *window, int key, int scancode, int action, int mod
 
         }
 
-    }
+        if (key == GLFW_KEY_ESCAPE)
+        {
 
-    if (action != GLFW_PRESS)
-        return;
-
-    if (key == GLFW_KEY_ESCAPE)
-    {
-
-        if (g->typing)
             g->typing = 0;
-        else if (exclusive)
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-    }
+        }
 
-    if (key == GLFW_KEY_ENTER)
-    {
-
-        if (g->typing)
+        if (key == GLFW_KEY_ENTER)
         {
 
-            if (mods & GLFW_MOD_SHIFT)
-            {
+            if (g->typing_buffer[0] == '/')
+                parse_command(g->typing_buffer);
 
-                int n = strlen(g->typing_buffer);
-
-                if (n < MAX_TEXT_LENGTH - 1)
-                {
-
-                    g->typing_buffer[n] = '\r';
-                    g->typing_buffer[n + 1] = '\0';
-
-                }
-
-            }
-
-            else
-            {
-
-                g->typing = 0;
-
-                if (g->typing_buffer[0] == '/')
-                {
-
-                    parse_command(g->typing_buffer, 1);
-
-                }
-
-            }
+            g->typing = 0;
 
         }
 
     }
 
-    if (control && key == 'V')
+    else
     {
 
-        const char *buffer = glfwGetClipboardString(window);
-
-        if (g->typing)
+        if (key == GLFW_KEY_ESCAPE)
         {
 
-            g->suppress_char = 1;
-
-            strncat(g->typing_buffer, buffer, MAX_TEXT_LENGTH - strlen(g->typing_buffer) - 1);
-
-        }
-
-        else
-        {
-
-            parse_command(buffer, 0);
+            if (exclusive)
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
         }
-
-    }
-
-    if (!g->typing)
-    {
 
         if (key == CRAFT_KEY_FLY)
             g->flying = !g->flying;
@@ -2091,7 +2039,11 @@ static void onkey(GLFWwindow *window, int key, int scancode, int action, int mod
             g->item_index = 9;
 
         if (key == CRAFT_KEY_ITEM_NEXT)
+        {
+
             g->item_index = (g->item_index + 1) % item_count;
+
+        }
 
         if (key == CRAFT_KEY_ITEM_PREV)
         {
@@ -2109,15 +2061,6 @@ static void onkey(GLFWwindow *window, int key, int scancode, int action, int mod
 
 static void onchar(GLFWwindow *window, unsigned int u)
 {
-
-    if (g->suppress_char)
-    {
-
-        g->suppress_char = 0;
-
-        return;
-
-    }
 
     if (g->typing)
     {
@@ -2199,18 +2142,9 @@ static void onmousebutton(GLFWwindow *window, int button, int action, int mods)
     {
 
         if (exclusive)
-        {
-
             removeblock();
-
-        }
-
         else
-        {
-
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-        }
 
     }
 
@@ -2303,18 +2237,6 @@ static void handle_movement(double dt)
 
         if (glfwGetKey(g->window, CRAFT_KEY_RIGHT))
             sx++;
-
-        if (glfwGetKey(g->window, GLFW_KEY_LEFT))
-            g->player.rx -= 1.0;
-
-        if (glfwGetKey(g->window, GLFW_KEY_RIGHT))
-            g->player.rx += 1.0;
-
-        if (glfwGetKey(g->window, GLFW_KEY_UP))
-            g->player.ry += 1.0;
-
-        if (glfwGetKey(g->window, GLFW_KEY_DOWN))
-            g->player.ry -= 1.0;
 
     }
 
