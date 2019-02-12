@@ -617,8 +617,8 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
     if (b1.vx == 0.0f)
     {
 
-        xEntry = -50000;
-        xExit = 50000;
+        xEntry = 0;
+        xExit = 0;
 
     }
 
@@ -633,8 +633,8 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
     if (b1.vy == 0.0f)
     {
 
-        yEntry = -50000;
-        yExit = 50000;
+        yEntry = 0;
+        yExit = 0;
 
     }
 
@@ -649,8 +649,8 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
     if (b1.vz == 0.0f)
     {
 
-        zEntry = -50000;
-        zExit = 50000;
+        zEntry = 0;
+        zExit = 0;
 
     }
 
@@ -739,24 +739,24 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
 }
 
-static void player_collide(Player *player, int x, int y, int z)
+static void player_collide(Player *player)
 {
 
     Box box;
     Box block;
 
-    box.x = player->box.x + 0.25;
+    box.x = player->box.x;
     box.y = player->box.y;
-    box.z = player->box.z + 0.25;
-    box.lx = 0.5;
+    box.z = player->box.z;
+    box.lx = 1.0;
     box.ly = 1.0;
-    box.lz = 0.5;
+    box.lz = 1.0;
     box.vx = player->box.vx;
     box.vy = player->box.vy;
     box.vz = player->box.vz;
-    block.x = x;
-    block.y = y;
-    block.z = z;
+    block.x = (int)player->box.x;
+    block.y = (int)player->box.y;
+    block.z = (int)player->box.z;
     block.lx = 1.0;
     block.ly = 1.0;
     block.lz = 1.0;
@@ -778,10 +778,9 @@ static void player_collide(Player *player, int x, int y, int z)
                 float normaly;
                 float normalz;
 
-                block.x = x + kx;
-                block.y = y + ky;
-                block.z = z + kz;
-
+                block.x = (int)player->box.x + kx;
+                block.y = (int)player->box.y + ky;
+                block.z = (int)player->box.z + kz;
                 chunk = find_chunk(chunked(block.x), chunked(block.z));
 
                 if (!chunk)
@@ -795,9 +794,9 @@ static void player_collide(Player *player, int x, int y, int z)
 
                 aabbsweep(box, block, &normalx, &normaly, &normalz);
 
-                box.vx = box.vx - normalx;
-                box.vy = box.vy - normaly;
-                box.vz = box.vz - normalz;
+                box.vx = box.vx - box.vx * normalx;
+                box.vy = box.vy - box.vy * normaly;
+                box.vz = box.vz - box.vz * normalz;
 
             }
 
@@ -2061,7 +2060,7 @@ static void handle_movement(double dt)
     g->player.box.vz *= ut * speed;
 
     for (int i = 0; i < step; i++)
-        player_collide(&g->player, g->player.box.x, g->player.box.y, g->player.box.z);
+        player_collide(&g->player);
 
 }
 
