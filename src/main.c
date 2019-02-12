@@ -952,7 +952,7 @@ static int player_intersects_block(int height, Player *player, int hx, int hy, i
 
 }
 
-static int has_lights(Chunk *chunk)
+static void dirty_chunk(Chunk *chunk)
 {
 
     for (int dp = -1; dp <= 1; dp++)
@@ -961,47 +961,10 @@ static int has_lights(Chunk *chunk)
         for (int dq = -1; dq <= 1; dq++)
         {
 
-            Chunk *other = chunk;
+            Chunk *other = find_chunk(chunk->p + dp, chunk->q + dq);
 
-            if (dp || dq)
-                other = find_chunk(chunk->p + dp, chunk->q + dq);
-
-            if (!other)
-                continue;
-
-            Map *map = &other->lights;
-
-            if (map->size)
-                return 1;
-
-        }
-
-    }
-
-    return 0;
-
-}
-
-static void dirty_chunk(Chunk *chunk)
-{
-
-    chunk->dirty = 1;
-
-    if (has_lights(chunk))
-    {
-
-        for (int dp = -1; dp <= 1; dp++)
-        {
-
-            for (int dq = -1; dq <= 1; dq++)
-            {
-
-                Chunk *other = find_chunk(chunk->p + dp, chunk->q + dq);
-
-                if (other)
-                    other->dirty = 1;
-
-            }
+            if (other)
+                other->dirty = 1;
 
         }
 
@@ -1388,18 +1351,13 @@ static void gen_chunk_buffer(Chunk *chunk)
 static void createworld(Map *map, int p, int q)
 {
 
-    int pad = 1;
+    int pad = 0;
 
     for (int dx = -pad; dx < CHUNK_SIZE + pad; dx++)
     {
 
         for (int dz = -pad; dz < CHUNK_SIZE + pad; dz++)
         {
-
-            int flag = 1;
-
-            if (dx < 0 || dz < 0 || dx >= CHUNK_SIZE || dz >= CHUNK_SIZE)
-                flag = -1;
 
             int x = p * CHUNK_SIZE + dx;
             int z = q * CHUNK_SIZE + dz;
@@ -1412,16 +1370,16 @@ static void createworld(Map *map, int p, int q)
                 h = 12;
 
             for (int y = 0; y < 10; y++)
-                map_set(map, x, y, z, CEMENT * flag);
+                map_set(map, x, y, z, CEMENT);
 
             for (int y = 10; y < 12; y++)
-                map_set(map, x, y, z, SAND * flag);
+                map_set(map, x, y, z, SAND);
 
             for (int y = 12; y < h - 1; y++)
-                map_set(map, x, y, z, DIRT * flag);
+                map_set(map, x, y, z, DIRT);
 
             if (h > 12)
-                map_set(map, x, h - 1, z, GRASS * flag);
+                map_set(map, x, h - 1, z, GRASS);
 
             if (h > 12)
             {
@@ -1429,7 +1387,7 @@ static void createworld(Map *map, int p, int q)
                 if (noise_simplex2(-x * 0.1, z * 0.1, 4, 0.8, 2) > 0.6)
                 {
 
-                    map_set(map, x, h, z, TALL_GRASS * flag);
+                    map_set(map, x, h, z, TALL_GRASS);
 
                 }
 
@@ -1438,7 +1396,7 @@ static void createworld(Map *map, int p, int q)
 
                     int w = YELLOW_FLOWER + noise_simplex2(x * 0.1, z * 0.1, 4, 0.8, 2) * 7;
 
-                    map_set(map, x, h, z, w * flag);
+                    map_set(map, x, h, z, w);
 
                 }
 
@@ -1481,7 +1439,7 @@ static void createworld(Map *map, int p, int q)
             {
 
                 if (noise_simplex3(x * 0.01, y * 0.1, z * 0.01, 8, 0.5, 2) > 0.75)
-                    map_set(map, x, y, z, CLOUD * flag);
+                    map_set(map, x, y, z, CLOUD);
 
             }
 
@@ -1647,27 +1605,6 @@ static void setblock(int x, int y, int z, int w)
     int q = chunked(z);
 
     setblock2(p, q, x, y, z, w);
-
-    for (int dx = -1; dx <= 1; dx++)
-    {
-
-        for (int dz = -1; dz <= 1; dz++)
-        {
-
-            if (dx == 0 && dz == 0)
-                continue;
-
-            if (dx && chunked(x + dx) == p)
-                continue;
-
-            if (dz && chunked(z + dz) == q)
-                continue;
-
-            setblock2(p + dx, q + dz, x, y, z, -w);
-
-        }
-
-    }
 
 }
 
