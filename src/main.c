@@ -166,26 +166,6 @@ static float get_daylight()
 
 }
 
-static int get_scale_factor()
-{
-
-    int winw;
-    int winh;
-    int bufw;
-    int bufh;
-    int factor;
-
-    glfwGetWindowSize(g->window, &winw, &winh);
-    glfwGetFramebufferSize(g->window, &bufw, &bufh);
-
-    factor = bufw / winw;
-    factor = MAX(1, factor);
-    factor = MIN(2, factor);
-
-    return factor;
-
-}
-
 static void get_sight_vector(float rx, float ry, float *vx, float *vy, float *vz)
 {
 
@@ -2387,6 +2367,7 @@ int main(int argc, char **argv)
     winh = modes[mode_count - 1].height;
     g->window = glfwCreateWindow(winw, winh, "Craft", monitor, NULL);
 
+    glfwGetFramebufferSize(g->window, &g->width, &g->height);
     glfwMakeContextCurrent(g->window);
     glfwSwapInterval(VSYNC);
     glfwSetInputMode(g->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -2398,17 +2379,13 @@ int main(int argc, char **argv)
     if (glewInit() != GLEW_OK)
         return -1;
 
+    glViewport(0, 0, g->width, g->height);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
     glLogicOp(GL_INVERT);
     glClearColor(0, 0, 0, 1);
     loadtextures();
     loadshaders();
-
-    g->render_radius = RENDER_CHUNK_RADIUS;
-    g->delete_radius = RENDER_CHUNK_RADIUS + 4;
-    g->scale = get_scale_factor();
-
     initrng();
 
     double last_update = glfwGetTime();
@@ -2419,6 +2396,11 @@ int main(int argc, char **argv)
     g->fps = 0;
     g->frames = 0;
     g->since = 0;
+    g->render_radius = RENDER_CHUNK_RADIUS;
+    g->delete_radius = RENDER_CHUNK_RADIUS + 4;
+    g->scale = g->width / winw;
+    g->scale = MAX(1, g->scale);
+    g->scale = MIN(2, g->scale);
 
     glfwSetTime(g->day_length / 3.0);
 
@@ -2427,9 +2409,6 @@ int main(int argc, char **argv)
     load_chunks(&g->player, g->render_radius, ((g->render_radius * 2) + 1) * ((g->render_radius * 2) + 1));
 
     g->player.box.y = highest_block(g->player.box.x, g->player.box.z) + 2;
-
-    glfwGetFramebufferSize(g->window, &g->width, &g->height);
-    glViewport(0, 0, g->width, g->height);
 
     while (running)
     {
