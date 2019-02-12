@@ -2343,6 +2343,9 @@ int main(int argc, char **argv)
     double previous = last_update;
     int running = 1;
 
+    g->player.box.x = 0;
+    g->player.box.y = 24;
+    g->player.box.z = 0;
     g->day_length = DAY_LENGTH;
     g->fps = 0;
     g->frames = 0;
@@ -2359,8 +2362,6 @@ int main(int argc, char **argv)
     GLuint sky_buffer = gen_sky_buffer();
 
     load_chunks(&g->player, g->render_radius, ((g->render_radius * 2) + 1) * ((g->render_radius * 2) + 1));
-
-    g->player.box.y = highest_block(g->player.box.x, g->player.box.z) + 2;
 
     while (running)
     {
