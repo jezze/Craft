@@ -1634,25 +1634,7 @@ static void load_chunks(Player *player, int radius, int max)
 
 }
 
-static void toggle_light(int x, int y, int z)
-{
-
-    Chunk *chunk = find_chunk(chunked(x), chunked(z));
-
-    if (chunk)
-    {
-
-        int w = map_get(&chunk->lights, x, y, z);
-
-        map_set(&chunk->lights, x, y, z, w ? 0 : 15);
-
-        dirty_chunk(chunk);
-
-    }
-
-}
-
-static void _set_block(int p, int q, int x, int y, int z, int w)
+static void setblock2(int p, int q, int x, int y, int z, int w)
 {
 
     Chunk *chunk = find_chunk(p, q);
@@ -1675,13 +1657,13 @@ static void _set_block(int p, int q, int x, int y, int z, int w)
 
 }
 
-static void set_block(int x, int y, int z, int w)
+static void setblock(int x, int y, int z, int w)
 {
 
     int p = chunked(x);
     int q = chunked(z);
 
-    _set_block(p, q, x, y, z, w);
+    setblock2(p, q, x, y, z, w);
 
     for (int dx = -1; dx <= 1; dx++)
     {
@@ -1698,7 +1680,7 @@ static void set_block(int x, int y, int z, int w)
             if (dz && chunked(z + dz) == q)
                 continue;
 
-            _set_block(p + dx, q + dz, x, y, z, -w);
+            setblock2(p + dx, q + dz, x, y, z, -w);
 
         }
 
@@ -1706,7 +1688,7 @@ static void set_block(int x, int y, int z, int w)
 
 }
 
-static void record_block(int x, int y, int z, int w)
+static void recordblock(int x, int y, int z, int w)
 {
 
     memcpy(&g->block1, &g->block0, sizeof(Block));
@@ -1808,6 +1790,7 @@ static void render_item(Attrib *attrib)
 {
 
     float matrix[16];
+    int w = items[g->item_index];
 
     set_matrix_item(matrix, g->width, g->height, g->scale);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -1816,8 +1799,6 @@ static void render_item(Attrib *attrib)
     glUniform3f(attrib->camera, 0, 0, 5);
     glUniform1i(attrib->sampler, 0);
     glUniform1f(attrib->timer, time_of_day());
-
-    int w = items[g->item_index];
 
     if (is_plant(w))
     {
@@ -1845,6 +1826,7 @@ static void render_text(Attrib *attrib, int justify, float x, float y, float n, 
 {
 
     float matrix[16];
+    int length;
 
     set_matrix_2d(matrix, g->width, g->height);
     glUseProgram(attrib->program);
@@ -1852,7 +1834,7 @@ static void render_text(Attrib *attrib, int justify, float x, float y, float n, 
     glUniform1i(attrib->sampler, 1);
     glUniform1i(attrib->extra1, 0);
 
-    int length = strlen(text);
+    length = strlen(text);
 
     x -= n * justify * (length - 1) / 2;
 
@@ -1900,7 +1882,7 @@ static void parse_command(const char *buffer)
 
 }
 
-static void addlight()
+static void addlight(void)
 {
 
     int hx, hy, hz, hw;
@@ -1908,11 +1890,26 @@ static void addlight()
     hw = hit_test(0, &g->player, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_destructable(hw))
-        toggle_light(hx, hy, hz);
+    {
+
+        Chunk *chunk = find_chunk(chunked(hx), chunked(hz));
+
+        if (chunk)
+        {
+
+            int w = map_get(&chunk->lights, hx, hy, hz);
+
+            map_set(&chunk->lights, hx, hy, hz, w ? 0 : 15);
+
+            dirty_chunk(chunk);
+
+        }
+
+    }
 
 }
 
-static void addblock()
+static void addblock(void)
 {
 
     int hx, hy, hz, hw;
@@ -1925,8 +1922,8 @@ static void addblock()
         if (!player_intersects_block(2, &g->player, hx, hy, hz))
         {
 
-            set_block(hx, hy, hz, items[g->item_index]);
-            record_block(hx, hy, hz, items[g->item_index]);
+            setblock(hx, hy, hz, items[g->item_index]);
+            recordblock(hx, hy, hz, items[g->item_index]);
 
         }
 
@@ -1934,7 +1931,7 @@ static void addblock()
 
 }
 
-static void removeblock()
+static void removeblock(void)
 {
 
     int hx, hy, hz, hw;
@@ -1944,17 +1941,17 @@ static void removeblock()
     if (hy > 0 && hy < 256 && is_destructable(hw))
     {
 
-        set_block(hx, hy, hz, 0);
-        record_block(hx, hy, hz, 0);
+        setblock(hx, hy, hz, 0);
+        recordblock(hx, hy, hz, 0);
 
         if (is_plant(get_block(hx, hy + 1, hz)))
-            set_block(hx, hy + 1, hz, 0);
+            setblock(hx, hy + 1, hz, 0);
 
     }
 
 }
 
-static void selectblock()
+static void selectblock(void)
 {
 
     int hx, hy, hz, hw;
