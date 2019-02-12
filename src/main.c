@@ -307,26 +307,22 @@ static GLuint gen_faces(int components, int faces, GLfloat *data)
 
 }
 
-static GLuint gen_crosshair_buffer()
+static GLuint gen_crosshair_buffer(void)
 {
 
     int x = g->width / 2;
     int y = g->height / 2;
     int p = 10 * g->scale;
-
-    float data[] = {
-        x, y - p, x, y + p,
-        x - p, y, x + p, y
-    };
+    GLfloat data[] = {x, y - p, x, y + p, x - p, y, x + p, y};
 
     return gen_buffer(sizeof(data), data);
 
 }
 
-static GLuint gen_sky_buffer()
+static GLuint gen_sky_buffer(void)
 {
 
-    float data[12288];
+    GLfloat data[12288];
 
     make_sphere(data, 1, 3);
 
@@ -337,8 +333,7 @@ static GLuint gen_sky_buffer()
 static GLuint gen_cube_buffer(float x, float y, float z, float n, int w)
 {
 
-    GLfloat data[6 * 10 * 6];
-
+    GLfloat data[360];
     float ao[6][4] = {0};
     float light[6][4] = {
         {0.5, 0.5, 0.5, 0.5},
@@ -358,7 +353,7 @@ static GLuint gen_cube_buffer(float x, float y, float z, float n, int w)
 static GLuint gen_plant_buffer(float x, float y, float z, float n, int w)
 {
 
-    GLfloat data[6 * 10 * 4];
+    GLfloat data[240];
     float ao = 0;
     float light = 1;
 
@@ -675,26 +670,13 @@ static int hit_test(int previous, Player *player, int *bx, int *by, int *bz)
 static unsigned int aabbcheck(Box *b1, Box *b2)
 {
 
-    float aminx = b1->x;
-    float amaxx = b1->x + b1->lx;
-    float aminy = b1->y;
-    float amaxy = b1->y + b1->ly;
-    float aminz = b1->z;
-    float amaxz = b1->z + b1->lz;
-    float bminx = b2->x;
-    float bmaxx = b2->x + b2->lx;
-    float bminy = b2->y;
-    float bmaxy = b2->y + b2->ly;
-    float bminz = b2->z;
-    float bmaxz = b2->z + b2->lz;
-
-    if (aminx > bmaxx || amaxx < bminx)
+    if (b1->x > b2->x + b2->lx || b1->x + b1->lx < b2->x)
         return 0;
 
-    if (aminy > bmaxy || amaxy < bminy)
+    if (b1->y > b2->y + b2->ly || b1->y + b1->ly < b2->y)
         return 0;
 
-    if (aminz > bmaxz || amaxz < bminz)
+    if (b1->z > b2->z + b2->lz || b1->z + b1->lz < b2->z)
         return 0;
 
     return 1;
