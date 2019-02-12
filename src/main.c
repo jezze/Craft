@@ -689,7 +689,7 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
     }
 
-    else if (yEntry > zEntry)
+    else if (yEntry > xEntry && yEntry > zEntry)
     {
 
         if (yInvEntry < 0.0f)
@@ -712,7 +712,7 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
     }
 
-    else
+    else if (zEntry > xEntry && zEntry > yEntry)
     {
 
         if (zInvEntry < 0.0f)
@@ -795,9 +795,9 @@ static void player_collide(Player *player, int x, int y, int z)
 
                 aabbsweep(box, block, &normalx, &normaly, &normalz);
 
-                box.vx = box.vx * normalx;
-                box.vy = box.vy * normaly;
-                box.vz = box.vz * normalz;
+                box.vx = box.vx - normalx;
+                box.vy = box.vy - normaly;
+                box.vz = box.vz - normalz;
 
             }
 
