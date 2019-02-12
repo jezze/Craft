@@ -123,10 +123,6 @@ typedef struct
     int mode_changed;
     int day_length;
     int time_changed;
-    Block block0;
-    Block block1;
-    Block copy0;
-    Block copy1;
     FPS fps;
     Attrib block_attrib;
     Attrib line_attrib;
@@ -1600,18 +1596,6 @@ static void setblock(int x, int y, int z, int w)
 
 }
 
-static void recordblock(int x, int y, int z, int w)
-{
-
-    memcpy(&g->block1, &g->block0, sizeof(Block));
-
-    g->block0.x = x;
-    g->block0.y = y;
-    g->block0.z = z;
-    g->block0.w = w;
-
-}
-
 static int get_block(int x, int y, int z)
 {
 
@@ -1832,12 +1816,7 @@ static void addblock(void)
     {
 
         if (!player_intersects_block(2, &g->player, hx, hy, hz))
-        {
-
             setblock(hx, hy, hz, items[g->item_index]);
-            recordblock(hx, hy, hz, items[g->item_index]);
-
-        }
 
     }
 
@@ -1854,7 +1833,6 @@ static void removeblock(void)
     {
 
         setblock(hx, hy, hz, 0);
-        recordblock(hx, hy, hz, 0);
 
         if (is_plant(get_block(hx, hy + 1, hz)))
             setblock(hx, hy + 1, hz, 0);
