@@ -165,17 +165,6 @@ static float get_daylight()
 
 }
 
-static void get_sight_vector(float rx, float ry, float *vx, float *vy, float *vz)
-{
-
-    float m = cosf(ry);
-
-    *vx = cosf(rx - RADIANS(90)) * m;
-    *vy = sinf(ry);
-    *vz = sinf(rx - RADIANS(90)) * m;
-
-}
-
 static GLuint gen_buffer(GLsizei size, GLfloat *data)
 {
 
@@ -507,9 +496,15 @@ static int hit_test(int previous, Player *player, int *bx, int *by, int *bz)
     int q = chunked(player->box.z);
     int result = 0;
     float best = 0;
-    float vx, vy, vz;
+    float vx;
+    float vy;
+    float vz;
+    float m;
 
-    get_sight_vector(player->rx, player->ry, &vx, &vy, &vz);
+    m = cosf(player->ry);
+    vx = cosf(player->rx - RADIANS(90)) * m;
+    vy = sinf(player->ry);
+    vz = sinf(player->rx - RADIANS(90)) * m;
 
     for (int i = 0; i < g->chunk_count; i++)
     {
