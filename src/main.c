@@ -1460,8 +1460,8 @@ static void create_chunk(Chunk *chunk, int p, int q)
     chunk->q = q;
     chunk->faces = 0;
     chunk->buffer = 0;
+    chunk->dirty = 1;
 
-    dirty_chunk(chunk);
     map_alloc(&chunk->map, dx, dy, dz, 0x7fff);
     map_alloc(&chunk->lights, dx, dy, dz, 0xf);
 
