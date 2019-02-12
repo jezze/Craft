@@ -17,9 +17,15 @@
 typedef struct
 {
 
-    float x, y, z;
-    float lx, ly, lz;
-    float vx, vy, vz;
+    float x;
+    float y;
+    float z;
+    float lx;
+    float ly;
+    float lz;
+    float vx;
+    float vy;
+    float vz;
 
 } Box;
 
@@ -69,12 +75,7 @@ typedef struct
 typedef struct
 {
 
-    float x;
-    float y;
-    float z;
-    float vx;
-    float vy;
-    float vz;
+    Box box;
     float rx;
     float ry;
     float dy;
@@ -128,6 +129,10 @@ typedef struct
     Block copy0;
     Block copy1;
     FPS fps;
+    Attrib block_attrib;
+    Attrib line_attrib;
+    Attrib text_attrib;
+    Attrib sky_attrib;
 
 } Model;
 
@@ -216,9 +221,9 @@ static void get_sight_vector(float rx, float ry, float *vx, float *vy, float *vz
 static void get_motion_vector_flying(int sz, int sx, Player *player)
 {
 
-    player->vx = 0;
-    player->vy = 0;
-    player->vz = 0;
+    player->box.vx = 0;
+    player->box.vy = 0;
+    player->box.vz = 0;
 
     if (!sz && !sx)
         return;
@@ -240,27 +245,27 @@ static void get_motion_vector_flying(int sz, int sx, Player *player)
     if (sz > 0)
         y = -y;
 
-    player->vx = cosf(player->rx + strafe) * m;
-    player->vy = y;
-    player->vz = sinf(player->rx + strafe) * m;
+    player->box.vx = cosf(player->rx + strafe) * m;
+    player->box.vy = y;
+    player->box.vz = sinf(player->rx + strafe) * m;
 
 }
 
 static void get_motion_vector_normal(int sz, int sx, Player *player)
 {
 
-    player->vx = 0;
-    player->vy = 0;
-    player->vz = 0;
+    player->box.vx = 0;
+    player->box.vy = 0;
+    player->box.vz = 0;
 
     if (!sz && !sx)
         return;
 
     float strafe = atan2f(sz, sx);
 
-    player->vx = cosf(player->rx + strafe);
-    player->vy = 0;
-    player->vz = sinf(player->rx + strafe);
+    player->box.vx = cosf(player->rx + strafe);
+    player->box.vy = 0;
+    player->box.vz = sinf(player->rx + strafe);
 
 }
 
@@ -620,16 +625,16 @@ static int _hit_test(Map *map, float max_distance, int previous, float x, float 
 
 }
 
-static int hit_test(int previous, float x, float y, float z, float rx, float ry, int *bx, int *by, int *bz)
+static int hit_test(int previous, Player *player, int *bx, int *by, int *bz)
 {
 
-    int p = chunked(x);
-    int q = chunked(z);
+    int p = chunked(player->box.x);
+    int q = chunked(player->box.z);
     int result = 0;
     float best = 0;
     float vx, vy, vz;
 
-    get_sight_vector(rx, ry, &vx, &vy, &vz);
+    get_sight_vector(player->rx, player->ry, &vx, &vy, &vz);
 
     for (int i = 0; i < g->chunk_count; i++)
     {
@@ -641,12 +646,12 @@ static int hit_test(int previous, float x, float y, float z, float rx, float ry,
         if (chunk_distance(chunk, p, q) > 1)
             continue;
 
-        hw = _hit_test(&chunk->map, 8, previous, x, y, z, vx, vy, vz, &hx, &hy, &hz);
+        hw = _hit_test(&chunk->map, 8, previous, player->box.x, player->box.y, player->box.z, vx, vy, vz, &hx, &hy, &hz);
 
         if (hw > 0)
         {
 
-            float d = sqrtf(powf(hx - x, 2) + powf(hy - y, 2) + powf(hz - z, 2));
+            float d = sqrtf(powf(hx - player->box.x, 2) + powf(hy - player->box.y, 2) + powf(hz - player->box.z, 2));
 
             if (best == 0 || d < best)
             {
@@ -667,7 +672,7 @@ static int hit_test(int previous, float x, float y, float z, float rx, float ry,
 
 }
 
-unsigned int aabbcheck(Box *b1, Box *b2)
+static unsigned int aabbcheck(Box *b1, Box *b2)
 {
 
     float aminx = b1->x;
@@ -701,6 +706,8 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
     float xInvEntry, yInvEntry, zInvEntry;
     float xInvExit, yInvExit, zInvExit;
+    float xEntry, yEntry, zEntry;
+    float xExit, yExit, zExit;
 
     if (b1.vx > 0.0f)
     {
@@ -749,9 +756,6 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
         zInvExit = b2.z - (b1.z + b1.lz);
 
     }
-
-    float xEntry, yEntry, zEntry;
-    float xExit, yExit, zExit;
 
     if (b1.vx == 0.0f)
     {
@@ -878,21 +882,21 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
 }
 
-static void collide(Player *player, int x, int y, int z)
+static void player_collide(Player *player, int x, int y, int z)
 {
 
     Box box;
     Box block;
 
-    box.x = player->x + 0.25;
-    box.y = player->y;
-    box.z = player->z + 0.25;
+    box.x = player->box.x + 0.25;
+    box.y = player->box.y;
+    box.z = player->box.z + 0.25;
     box.lx = 0.5;
     box.ly = 1.0;
     box.lz = 0.5;
-    box.vx = player->vx;
-    box.vy = player->vy;
-    box.vz = player->vz;
+    box.vx = player->box.vx;
+    box.vy = player->box.vy;
+    box.vz = player->box.vz;
     block.x = x;
     block.y = y;
     block.z = z;
@@ -937,7 +941,7 @@ static void collide(Player *player, int x, int y, int z)
 
                 aabbsweep(box, block, &normalx, &normaly, &normalz);
 
-                player->y = (block.y + block.ly);
+                player->box.y = (block.y + block.ly);
 
             }
 
@@ -947,12 +951,12 @@ static void collide(Player *player, int x, int y, int z)
 
 }
 
-static int player_intersects_block(int height, float x, float y, float z, int hx, int hy, int hz)
+static int player_intersects_block(int height, Player *player, int hx, int hy, int hz)
 {
 
-    int nx = roundf(x);
-    int ny = roundf(y);
-    int nz = roundf(z);
+    int nx = roundf(player->box.x);
+    int ny = roundf(player->box.y);
+    int nz = roundf(player->box.z);
 
     for (int i = 0; i < height; i++)
     {
@@ -1535,8 +1539,8 @@ static void delete_chunks()
 
         Chunk *chunk = g->chunks + i;
 
-        int p = chunked(g->player.x);
-        int q = chunked(g->player.z);
+        int p = chunked(g->player.box.x);
+        int q = chunked(g->player.box.z);
         int delete = 1;
 
         if (chunk_distance(chunk, p, q) < g->delete_radius)
@@ -1588,8 +1592,8 @@ static void delete_all_chunks()
 static void load_chunks(Player *player, int radius, int max)
 {
 
-    int p = chunked(player->x);
-    int q = chunked(player->z);
+    int p = chunked(player->box.x);
+    int q = chunked(player->box.z);
 
     for (int dp = -radius; dp <= radius; dp++)
     {
@@ -1730,17 +1734,17 @@ static int get_block(int x, int y, int z)
 static int render_chunks(Attrib *attrib, Player *player)
 {
 
-    int p = chunked(player->x);
-    int q = chunked(player->z);
+    int p = chunked(player->box.x);
+    int q = chunked(player->box.z);
     float matrix[16];
     float planes[6][4];
     int result = 0;
 
-    set_matrix_3d(matrix, g->width, g->height, player->x, player->y, player->z, player->rx, player->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d(matrix, g->width, g->height, player->box.x, player->box.y, player->box.z, player->rx, player->ry, g->fov, g->ortho, g->render_radius);
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform3f(attrib->camera, player->x, player->y, player->z);
+    glUniform3f(attrib->camera, player->box.x, player->box.y, player->box.z);
     glUniform1i(attrib->sampler, 0);
     glUniform1i(attrib->extra1, 2);
     glUniform1f(attrib->extra2, get_daylight());
@@ -1902,7 +1906,7 @@ static void addlight()
 
     int hx, hy, hz, hw;
 
-    hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+    hw = hit_test(0, &g->player, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_destructable(hw))
         toggle_light(hx, hy, hz);
@@ -1914,12 +1918,12 @@ static void addblock()
 
     int hx, hy, hz, hw;
 
-    hw = hit_test(1, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+    hw = hit_test(1, &g->player, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_obstacle(hw))
     {
 
-        if (!player_intersects_block(2, g->player.x, g->player.y, g->player.z, hx, hy, hz))
+        if (!player_intersects_block(2, &g->player, hx, hy, hz))
         {
 
             set_block(hx, hy, hz, items[g->item_index]);
@@ -1936,7 +1940,7 @@ static void removeblock()
 
     int hx, hy, hz, hw;
 
-    hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+    hw = hit_test(0, &g->player, &hx, &hy, &hz);
 
     if (hy > 0 && hy < 256 && is_destructable(hw))
     {
@@ -1957,7 +1961,7 @@ static void selectblock()
     int hx, hy, hz, hw;
     unsigned int i;
 
-    hw = hit_test(0, g->player.x, g->player.y, g->player.z, g->player.rx, g->player.ry, &hx, &hy, &hz);
+    hw = hit_test(0, &g->player, &hx, &hy, &hz);
 
     for (i = 0; i < item_count; i++)
     {
@@ -2235,10 +2239,15 @@ static void onmousebutton(GLFWwindow *window, int button, int action, int mods)
 
 }
 
-static void handle_mouse_input()
+static void handle_movement(double dt)
 {
 
     int exclusive = glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+    float speed = g->flying ? 32 : 8;
+    int step = 8;
+    float ut = dt / step;
+    int sz = 0;
+    int sx = 0;
     static double px = 0;
     static double py = 0;
 
@@ -2276,17 +2285,6 @@ static void handle_mouse_input()
         glfwGetCursorPos(g->window, &px, &py);
 
     }
-
-}
-
-static void handle_movement(double dt)
-{
-
-    float speed = g->flying ? 32 : 8;
-    int step = 8;
-    float ut = dt / step;
-    int sz = 0;
-    int sx = 0;
 
     if (!g->typing)
     {
@@ -2332,7 +2330,7 @@ static void handle_movement(double dt)
         {
 
             if (g->flying)
-                g->player.vy = 1;
+                g->player.box.vy = 1;
             else if (g->player.dy == 0)
                 g->player.dy = 2.0;
 
@@ -2342,15 +2340,15 @@ static void handle_movement(double dt)
         {
 
             if (g->flying)
-                g->player.vy = -1;
+                g->player.box.vy = -1;
 
         }
 
     }
 
-    g->player.vx = g->player.vx * ut * speed;
-    g->player.vy = g->player.vy * ut * speed;
-    g->player.vz = g->player.vz * ut * speed;
+    g->player.box.vx = g->player.box.vx * ut * speed;
+    g->player.box.vy = g->player.box.vy * ut * speed;
+    g->player.box.vz = g->player.box.vz * ut * speed;
 
     for (int i = 0; i < step; i++)
     {
@@ -2370,18 +2368,18 @@ static void handle_movement(double dt)
 
         }
 
-        g->player.vy += g->player.dy * ut;
-        g->player.x += g->player.vx;
-        g->player.y += g->player.vy;
-        g->player.z += g->player.vz;
+        g->player.box.vy += g->player.dy * ut;
+        g->player.box.x += g->player.box.vx;
+        g->player.box.y += g->player.box.vy;
+        g->player.box.z += g->player.box.vz;
 
-        collide(&g->player, g->player.x, g->player.y, g->player.z);
+        player_collide(&g->player, g->player.box.x, g->player.box.y, g->player.box.z);
 
     }
 
 }
 
-static GLuint load_shader(GLenum type, const char *path)
+static GLuint loadshader(GLenum type, const char *path)
 {
 
     FILE *file;
@@ -2424,52 +2422,112 @@ static GLuint load_shader(GLenum type, const char *path)
 
 }
 
-static GLuint load_program(const char *path1, const char *path2)
+static void loadshaders(void)
 {
 
-    GLuint shader1 = load_shader(GL_VERTEX_SHADER, path1);
-    GLuint shader2 = load_shader(GL_FRAGMENT_SHADER, path2);
-    GLuint program = glCreateProgram();
-    GLint status;
+    GLuint program;
+    GLuint shader1;
+    GLuint shader2;
+
+    program = glCreateProgram();
+    shader1 = loadshader(GL_VERTEX_SHADER, "shaders/block_vertex.glsl");
+    shader2 = loadshader(GL_FRAGMENT_SHADER, "shaders/block_fragment.glsl");
 
     glAttachShader(program, shader1);
     glAttachShader(program, shader2);
     glLinkProgram(program);
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-
-    if (status == GL_FALSE)
-    {
-
-        GLint length;
-
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-
-        GLchar *info = calloc(length, sizeof(GLchar));
-
-        glGetProgramInfoLog(program, length, NULL, info);
-
-        fprintf(stderr, "glLinkProgram failed: %s\n", info);
-        free(info);
-
-    }
-
     glDetachShader(program, shader1);
     glDetachShader(program, shader2);
     glDeleteShader(shader1);
     glDeleteShader(shader2);
 
-    return program;
+    g->block_attrib.program = program;
+    g->block_attrib.position = glGetAttribLocation(program, "position");
+    g->block_attrib.normal = glGetAttribLocation(program, "normal");
+    g->block_attrib.uv = glGetAttribLocation(program, "uv");
+    g->block_attrib.matrix = glGetUniformLocation(program, "matrix");
+    g->block_attrib.sampler = glGetUniformLocation(program, "sampler");
+    g->block_attrib.extra1 = glGetUniformLocation(program, "sky_sampler");
+    g->block_attrib.extra2 = glGetUniformLocation(program, "daylight");
+    g->block_attrib.extra3 = glGetUniformLocation(program, "fog_distance");
+    g->block_attrib.extra4 = glGetUniformLocation(program, "ortho");
+    g->block_attrib.camera = glGetUniformLocation(program, "camera");
+    g->block_attrib.timer = glGetUniformLocation(program, "timer");
+
+    program = glCreateProgram();
+    shader1 = loadshader(GL_VERTEX_SHADER, "shaders/line_vertex.glsl");
+    shader2 = loadshader(GL_FRAGMENT_SHADER, "shaders/line_fragment.glsl");
+
+    glAttachShader(program, shader1);
+    glAttachShader(program, shader2);
+    glLinkProgram(program);
+    glDetachShader(program, shader1);
+    glDetachShader(program, shader2);
+    glDeleteShader(shader1);
+    glDeleteShader(shader2);
+
+    g->line_attrib.program = program;
+    g->line_attrib.position = glGetAttribLocation(program, "position");
+    g->line_attrib.matrix = glGetUniformLocation(program, "matrix");
+
+    program = glCreateProgram();
+    shader1 = loadshader(GL_VERTEX_SHADER, "shaders/text_vertex.glsl");
+    shader2 = loadshader(GL_FRAGMENT_SHADER, "shaders/text_fragment.glsl");
+
+    glAttachShader(program, shader1);
+    glAttachShader(program, shader2);
+    glLinkProgram(program);
+    glDetachShader(program, shader1);
+    glDetachShader(program, shader2);
+    glDeleteShader(shader1);
+    glDeleteShader(shader2);
+
+    g->text_attrib.program = program;
+    g->text_attrib.position = glGetAttribLocation(program, "position");
+    g->text_attrib.uv = glGetAttribLocation(program, "uv");
+    g->text_attrib.matrix = glGetUniformLocation(program, "matrix");
+    g->text_attrib.sampler = glGetUniformLocation(program, "sampler");
+
+    program = glCreateProgram();
+    shader1 = loadshader(GL_VERTEX_SHADER, "shaders/sky_vertex.glsl");
+    shader2 = loadshader(GL_FRAGMENT_SHADER, "shaders/sky_fragment.glsl");
+
+    glAttachShader(program, shader1);
+    glAttachShader(program, shader2);
+    glLinkProgram(program);
+    glDetachShader(program, shader1);
+    glDetachShader(program, shader2);
+    glDeleteShader(shader1);
+    glDeleteShader(shader2);
+
+    g->sky_attrib.program = program;
+    g->sky_attrib.position = glGetAttribLocation(program, "position");
+    g->sky_attrib.normal = glGetAttribLocation(program, "normal");
+    g->sky_attrib.uv = glGetAttribLocation(program, "uv");
+    g->sky_attrib.matrix = glGetUniformLocation(program, "matrix");
+    g->sky_attrib.sampler = glGetUniformLocation(program, "sampler");
+    g->sky_attrib.timer = glGetUniformLocation(program, "timer");
 
 }
 
-static void flip_image_vertical(unsigned char *data, unsigned int width, unsigned int height)
+static void loadtexture(const char *filename)
 {
 
-    unsigned int size = width * height * 4;
-    unsigned int stride = sizeof(char) * width * 4;
-    unsigned char *new_data = malloc(sizeof(unsigned char) * size);
+    unsigned char *data;
+    unsigned char *new_data;
+    unsigned int width;
+    unsigned int height;
+    unsigned int size;
+    unsigned int stride;
+    unsigned int i;
 
-    for (unsigned int i = 0; i < height; i++)
+    lodepng_decode32_file(&data, &width, &height, filename);
+
+    size = width * height * 4;
+    stride = sizeof(char) * width * 4;
+    new_data = malloc(sizeof(unsigned char) * size);
+
+    for (i = 0; i < height; i++)
     {
 
         unsigned int j = height - i - 1;
@@ -2479,77 +2537,69 @@ static void flip_image_vertical(unsigned char *data, unsigned int width, unsigne
     }
 
     memcpy(data, new_data, size);
-
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     free(new_data);
+    free(data);
 
 }
 
-static void load_png_texture(const char *file_name)
+static void loadtextures(void)
 {
 
-    unsigned int error;
-    unsigned char *data;
-    unsigned int width, height;
+    GLuint texture;
 
-    error = lodepng_decode32_file(&data, &width, &height, file_name);
+    glGenTextures(1, &texture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    loadtexture("textures/texture.png");
 
-    if (error)
-    {
+    glGenTextures(1, &texture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    loadtexture("textures/font.png");
 
-        fprintf(stderr, "load_png_texture %s failed, error %u: %s\n", file_name, error, lodepng_error_text(error));
-        exit(1);
+    glGenTextures(1, &texture);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    loadtexture("textures/sky.png");
 
-    }
+}
 
-    flip_image_vertical(data, width, height);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    free(data);
+static void initrng(void)
+{
+
+    struct mtwist_state state;
+
+    mtwist_seed1(&state, 1234);
+    noise_seed(&state);
 
 }
 
 int main(int argc, char **argv)
 {
 
-    struct mtwist_state state;
-    int window_width = WINDOW_WIDTH;
-    int window_height = WINDOW_HEIGHT;
-
-/*
-    mtwist_seed1(&state, time(NULL));
-*/
-
-    mtwist_seed1(&state, 1234);
-    noise_seed(&state);
+    const GLFWvidmode *modes;
+    GLFWmonitor *monitor;
+    int mode_count;
+    int winw;
+    int winh;
 
     if (!glfwInit())
         return -1;
 
-    GLFWmonitor *monitor = NULL;
-
-    if (FULLSCREEN)
-    {
-
-        int mode_count;
-
-        monitor = glfwGetPrimaryMonitor();
-
-        const GLFWvidmode *modes = glfwGetVideoModes(monitor, &mode_count);
-
-        window_width = modes[mode_count - 1].width;
-        window_height = modes[mode_count - 1].height;
-
-    }
-
-    g->window = glfwCreateWindow(window_width, window_height, "Craft", monitor, NULL);
-
-    if (!g->window)
-    {
-
-        glfwTerminate();
-
-        return -1;
-
-    }
+    monitor = glfwGetPrimaryMonitor();
+    modes = glfwGetVideoModes(monitor, &mode_count);
+    winw = modes[mode_count - 1].width;
+    winh = modes[mode_count - 1].height;
+    g->window = glfwCreateWindow(winw, winh, "Craft", monitor, NULL);
 
     glfwMakeContextCurrent(g->window);
     glfwSwapInterval(VSYNC);
@@ -2566,227 +2616,155 @@ int main(int argc, char **argv)
     glEnable(GL_DEPTH_TEST);
     glLogicOp(GL_INVERT);
     glClearColor(0, 0, 0, 1);
-
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    load_png_texture("textures/texture.png");
-
-    GLuint font;
-    glGenTextures(1, &font);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, font);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    load_png_texture("textures/font.png");
-
-    GLuint sky;
-    glGenTextures(1, &sky);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, sky);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    load_png_texture("textures/sky.png");
-
-    Attrib block_attrib = {0};
-    Attrib line_attrib = {0};
-    Attrib text_attrib = {0};
-    Attrib sky_attrib = {0};
-    GLuint program;
-
-    program = load_program("shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
-    block_attrib.program = program;
-    block_attrib.position = glGetAttribLocation(program, "position");
-    block_attrib.normal = glGetAttribLocation(program, "normal");
-    block_attrib.uv = glGetAttribLocation(program, "uv");
-    block_attrib.matrix = glGetUniformLocation(program, "matrix");
-    block_attrib.sampler = glGetUniformLocation(program, "sampler");
-    block_attrib.extra1 = glGetUniformLocation(program, "sky_sampler");
-    block_attrib.extra2 = glGetUniformLocation(program, "daylight");
-    block_attrib.extra3 = glGetUniformLocation(program, "fog_distance");
-    block_attrib.extra4 = glGetUniformLocation(program, "ortho");
-    block_attrib.camera = glGetUniformLocation(program, "camera");
-    block_attrib.timer = glGetUniformLocation(program, "timer");
-
-    program = load_program("shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
-    line_attrib.program = program;
-    line_attrib.position = glGetAttribLocation(program, "position");
-    line_attrib.matrix = glGetUniformLocation(program, "matrix");
-
-    program = load_program("shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
-    text_attrib.program = program;
-    text_attrib.position = glGetAttribLocation(program, "position");
-    text_attrib.uv = glGetAttribLocation(program, "uv");
-    text_attrib.matrix = glGetUniformLocation(program, "matrix");
-    text_attrib.sampler = glGetUniformLocation(program, "sampler");
-
-    program = load_program("shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
-    sky_attrib.program = program;
-    sky_attrib.position = glGetAttribLocation(program, "position");
-    sky_attrib.normal = glGetAttribLocation(program, "normal");
-    sky_attrib.uv = glGetAttribLocation(program, "uv");
-    sky_attrib.matrix = glGetUniformLocation(program, "matrix");
-    sky_attrib.sampler = glGetUniformLocation(program, "sampler");
-    sky_attrib.timer = glGetUniformLocation(program, "timer");
+    loadtextures();
+    loadshaders();
 
     g->render_radius = RENDER_CHUNK_RADIUS;
     g->delete_radius = RENDER_CHUNK_RADIUS + 4;
+    g->scale = get_scale_factor();
 
+    initrng();
+
+    double last_update = glfwGetTime();
+    double previous = last_update;
     int running = 1;
+
+    g->day_length = DAY_LENGTH;
+    g->time_changed = 1;
+
+    glfwSetTime(g->day_length / 3.0);
+
+    GLuint sky_buffer = gen_sky_buffer();
+
+    load_chunks(&g->player, g->render_radius, ((g->render_radius * 2) + 1) * ((g->render_radius * 2) + 1));
+
+    g->player.box.y = highest_block(g->player.box.x, g->player.box.z) + 2;
+
+    glfwGetFramebufferSize(g->window, &g->width, &g->height);
+    glViewport(0, 0, g->width, g->height);
 
     while (running)
     {
 
-        double last_update = glfwGetTime();
-        double previous = last_update;
-
-        g->day_length = DAY_LENGTH;
-        g->time_changed = 1;
-
-        glfwSetTime(g->day_length / 3.0);
-
-        GLuint sky_buffer = gen_sky_buffer();
-
-        load_chunks(&g->player, g->render_radius, ((g->render_radius * 2) + 1) * ((g->render_radius * 2) + 1));
-
-        g->player.y = highest_block(g->player.x, g->player.z) + 2;
-
-        while (1)
+        if (g->time_changed)
         {
 
-            g->scale = get_scale_factor();
+            g->time_changed = 0;
+            last_update = glfwGetTime();
 
-            glfwGetFramebufferSize(g->window, &g->width, &g->height);
-            glViewport(0, 0, g->width, g->height);
+            memset(&g->fps, 0, sizeof(FPS));
 
-            if (g->time_changed)
+        }
+
+        g->fps.frames++;
+
+        double now = glfwGetTime();
+        double elapsed = now - g->fps.since;
+        double dt = now - previous;
+
+        previous = now;
+
+        if (now - last_update > 0.1)
+            last_update = now;
+
+        if (elapsed >= 1)
+        {
+
+            g->fps.fps = round(g->fps.frames / elapsed);
+            g->fps.frames = 0;
+            g->fps.since = now;
+
+        }
+
+        dt = MIN(dt, 0.2);
+        dt = MAX(dt, 0.0);
+
+        /* Input */
+        handle_movement(dt);
+
+        /* Logic */
+        delete_chunks();
+        load_chunks(&g->player, 1, 9);
+        load_chunks(&g->player, g->render_radius, 1);
+
+        /* Rendering */
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        render_sky(&g->sky_attrib, &g->player, sky_buffer);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        int face_count = render_chunks(&g->block_attrib, &g->player);
+
+        glClear(GL_DEPTH_BUFFER_BIT);
+        render_crosshairs(&g->line_attrib);
+        render_item(&g->block_attrib);
+
+        char text_buffer[1024];
+        float ts = 12 * g->scale;
+        float tx = ts / 2;
+        float ty = g->height - ts;
+        int hour = time_of_day() * 24;
+        char am_pm = hour < 12 ? 'a' : 'p';
+
+        hour = hour % 12;
+        hour = hour ? hour : 12;
+
+        snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d] %d%cm %dfps", chunked(g->player.box.x), chunked(g->player.box.z), g->player.box.x, g->player.box.y, g->player.box.z, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
+        render_text(&g->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+
+        ty -= ts * 2;
+
+        for (int i = 0; i < MAX_MESSAGES; i++)
+        {
+
+            int index = (g->message_index + i) % MAX_MESSAGES;
+
+            if (strlen(g->messages[index]))
             {
 
-                g->time_changed = 0;
-                last_update = glfwGetTime();
-
-                memset(&g->fps, 0, sizeof(FPS));
-
-            }
-
-            g->fps.frames++;
-
-            double now = glfwGetTime();
-            double elapsed = now - g->fps.since;
-            double dt = now - previous;
-
-            previous = now;
-
-            if (now - last_update > 0.1)
-                last_update = now;
-
-            if (elapsed >= 1)
-            {
-
-                g->fps.fps = round(g->fps.frames / elapsed);
-                g->fps.frames = 0;
-                g->fps.since = now;
-
-            }
-
-            dt = MIN(dt, 0.2);
-            dt = MAX(dt, 0.0);
-
-            /* Input */
-            handle_mouse_input();
-            handle_movement(dt);
-
-            /* Logic */
-            delete_chunks();
-            load_chunks(&g->player, 1, 9);
-            load_chunks(&g->player, g->render_radius, 1);
-
-            /* Rendering */
-            glClear(GL_COLOR_BUFFER_BIT);
-            glClear(GL_DEPTH_BUFFER_BIT);
-            render_sky(&sky_attrib, &g->player, sky_buffer);
-            glClear(GL_DEPTH_BUFFER_BIT);
-
-            int face_count = render_chunks(&block_attrib, &g->player);
-
-            glClear(GL_DEPTH_BUFFER_BIT);
-            render_crosshairs(&line_attrib);
-            render_item(&block_attrib);
-
-            char text_buffer[1024];
-            float ts = 12 * g->scale;
-            float tx = ts / 2;
-            float ty = g->height - ts;
-            int hour = time_of_day() * 24;
-            char am_pm = hour < 12 ? 'a' : 'p';
-
-            hour = hour % 12;
-            hour = hour ? hour : 12;
-
-            snprintf(text_buffer, 1024, "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d] %d%cm %dfps", chunked(g->player.x), chunked(g->player.z), g->player.x, g->player.y, g->player.z, g->chunk_count, face_count * 2, hour, am_pm, g->fps.fps);
-            render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
-
-            ty -= ts * 2;
-
-            for (int i = 0; i < MAX_MESSAGES; i++)
-            {
-
-                int index = (g->message_index + i) % MAX_MESSAGES;
-
-                if (strlen(g->messages[index]))
-                {
-
-                    render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, g->messages[index]);
-
-                    ty -= ts * 2;
-
-                }
-
-            }
-
-            if (g->typing)
-            {
-
-                snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
-                render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+                render_text(&g->text_attrib, ALIGN_LEFT, tx, ty, ts, g->messages[index]);
 
                 ty -= ts * 2;
 
             }
 
-            glfwSwapBuffers(g->window);
-            glfwPollEvents();
+        }
 
-            if (glfwWindowShouldClose(g->window))
-            {
+        if (g->typing)
+        {
 
-                running = 0;
+            snprintf(text_buffer, 1024, "> %s", g->typing_buffer);
+            render_text(&g->text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
 
-                break;
-
-            }
-
-            if (g->mode_changed)
-            {
-
-                g->mode_changed = 0;
-
-                break;
-
-            }
+            ty -= ts * 2;
 
         }
 
-        del_buffer(sky_buffer);
-        delete_all_chunks();
+        glfwSwapBuffers(g->window);
+        glfwPollEvents();
+
+        if (glfwWindowShouldClose(g->window))
+        {
+
+            running = 0;
+
+            break;
+
+        }
+
+        if (g->mode_changed)
+        {
+
+            g->mode_changed = 0;
+
+            break;
+
+        }
 
     }
 
+    del_buffer(sky_buffer);
+    delete_all_chunks();
     glfwTerminate();
 
     return 0;

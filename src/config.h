@@ -1,6 +1,3 @@
-#define FULLSCREEN                      1
-#define WINDOW_WIDTH                    1024
-#define WINDOW_HEIGHT                   768
 #define VSYNC                           1
 #define SCROLL_THRESHOLD                0.1
 #define MAX_MESSAGES                    4
