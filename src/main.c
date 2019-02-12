@@ -61,7 +61,6 @@ typedef struct
     Box box;
     float rx;
     float ry;
-    float dy;
 
 } Player;
 
@@ -2085,29 +2084,13 @@ static void handle_movement(double dt)
 
     }
 
-    g->player.box.vx = g->player.box.vx * ut * speed;
-    g->player.box.vy = g->player.box.vy * ut * speed;
-    g->player.box.vz = g->player.box.vz * ut * speed;
+    g->player.box.vx *= ut * speed;
+    g->player.box.vy *= ut * speed;
+    g->player.box.vz *= ut * speed;
 
     for (int i = 0; i < step; i++)
     {
 
-        if (g->flying)
-        {
-
-            g->player.dy = 0;
-
-        }
-
-        else
-        {
-
-            g->player.dy -= ut * 8.0;
-            g->player.dy = MAX(g->player.dy, -8.0);
-
-        }
-
-        g->player.box.vy += g->player.dy * ut;
         g->player.box.x += g->player.box.vx;
         g->player.box.y += g->player.box.vy;
         g->player.box.z += g->player.box.vz;
@@ -2374,6 +2357,7 @@ int main(int argc, char **argv)
     g->scale = g->width / winw;
     g->scale = MAX(1, g->scale);
     g->scale = MIN(2, g->scale);
+    g->flying = 1;
 
     glfwSetTime(g->day_length / 3.0);
 
