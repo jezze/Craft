@@ -272,6 +272,7 @@ static GLuint gen_buffer(GLsizei size, GLfloat *data)
 {
 
     GLuint buffer;
+
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
