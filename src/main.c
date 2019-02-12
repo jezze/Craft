@@ -41,17 +41,9 @@ typedef struct
     int miny;
     int maxy;
     GLuint buffer;
-
-} Chunk;
-
-typedef struct
-{
-
-    Map *block_maps[3][3];
-    Map *light_maps[3][3];
     GLfloat *data;
 
-} WorkerItem;
+} Chunk;
 
 typedef struct
 {
@@ -1047,7 +1039,7 @@ static void light_fill(char *opaque, char *light, int x, int y, int z, int w, in
 
 }
 
-static void compute_chunk(Chunk *chunk, WorkerItem *item)
+static void compute_chunk(Chunk *chunk)
 {
 
     char *opaque = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
@@ -1057,6 +1049,39 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
     int oy = -1;
     int oz = chunk->q * CHUNK_SIZE - CHUNK_SIZE - 1;
     int has_light = 0;
+    Map *block_maps[3][3];
+    Map *light_maps[3][3];
+
+    for (int dp = -1; dp <= 1; dp++)
+    {
+
+        for (int dq = -1; dq <= 1; dq++)
+        {
+
+            Chunk *other = chunk;
+
+            if (dp || dq)
+                other = find_chunk(chunk->p + dp, chunk->q + dq);
+
+            if (other)
+            {
+
+                block_maps[dp + 1][dq + 1] = &other->map;
+                light_maps[dp + 1][dq + 1] = &other->lights;
+
+            }
+
+            else
+            {
+
+                block_maps[dp + 1][dq + 1] = 0;
+                light_maps[dp + 1][dq + 1] = 0;
+
+            }
+
+        }
+
+    }
 
     for (int a = 0; a < 3; a++)
     {
@@ -1064,7 +1089,7 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
         for (int b = 0; b < 3; b++)
         {
 
-            Map *map = item->light_maps[a][b];
+            Map *map = light_maps[a][b];
 
             if (map && map->size)
                 has_light = 1;
@@ -1079,7 +1104,7 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
         for (int b = 0; b < 3; b++)
         {
 
-            Map *map = item->block_maps[a][b];
+            Map *map = block_maps[a][b];
 
             if (!map)
                 continue;
@@ -1121,7 +1146,7 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
             for (int b = 0; b < 3; b++)
             {
 
-                Map *map = item->light_maps[a][b];
+                Map *map = light_maps[a][b];
 
                 if (!map)
                     continue;
@@ -1142,7 +1167,7 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
 
     }
 
-    Map *map = item->block_maps[1][1];
+    Map *map = block_maps[1][1];
 
     chunk->miny = 256;
     chunk->maxy = 0;
@@ -1176,7 +1201,7 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
 
     } END_MAP_FOR_EACH;
 
-    item->data = malloc_faces(10, chunk->faces);
+    chunk->data = malloc_faces(10, chunk->faces);
     int offset = 0;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
@@ -1271,14 +1296,14 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
 
             float rotation = noise_simplex2(ex, ez, 4, 0.5, 2) * 360;
 
-            make_plant(item->data + offset, min_ao, max_light, ex, ey, ez, 0.5, ew, rotation);
+            make_plant(chunk->data + offset, min_ao, max_light, ex, ey, ez, 0.5, ew, rotation);
 
         }
 
         else
         {
 
-            make_cube(item->data + offset, ao, light, f1, f2, f3, f4, f5, f6, ex, ey, ez, 0.5, ew);
+            make_cube(chunk->data + offset, ao, light, f1, f2, f3, f4, f5, f6, ex, ey, ez, 0.5, ew);
 
         }
 
@@ -1295,43 +1320,10 @@ static void compute_chunk(Chunk *chunk, WorkerItem *item)
 static void gen_chunk_buffer(Chunk *chunk)
 {
 
-    WorkerItem item;
-
-    for (int dp = -1; dp <= 1; dp++)
-    {
-
-        for (int dq = -1; dq <= 1; dq++)
-        {
-
-            Chunk *other = chunk;
-
-            if (dp || dq)
-                other = find_chunk(chunk->p + dp, chunk->q + dq);
-
-            if (other)
-            {
-
-                item.block_maps[dp + 1][dq + 1] = &other->map;
-                item.light_maps[dp + 1][dq + 1] = &other->lights;
-
-            }
-
-            else
-            {
-
-                item.block_maps[dp + 1][dq + 1] = 0;
-                item.light_maps[dp + 1][dq + 1] = 0;
-
-            }
-
-        }
-
-    }
-
-    compute_chunk(chunk, &item);
+    compute_chunk(chunk);
     del_buffer(chunk->buffer);
 
-    chunk->buffer = gen_faces(10, chunk->faces, item.data);
+    chunk->buffer = gen_faces(10, chunk->faces, chunk->data);
     chunk->dirty = 0;
 
 }
