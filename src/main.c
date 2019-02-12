@@ -439,34 +439,6 @@ static int chunk_visible(float planes[6][4], int p, int q, int miny, int maxy)
 
 }
 
-static int highest_block(float x, float z)
-{
-
-    int result = -1;
-    int nx = roundf(x);
-    int nz = roundf(z);
-    int p = chunked(x);
-    int q = chunked(z);
-    Chunk *chunk = find_chunk(p, q);
-
-    if (chunk)
-    {
-
-        Map *map = &chunk->map;
-
-        MAP_FOR_EACH(map, ex, ey, ez, ew) {
-
-            if (is_obstacle(ew) && ex == nx && ez == nz)
-                result = MAX(result, ey);
-
-        } END_MAP_FOR_EACH;
-
-    }
-
-    return result;
-
-}
-
 static int _hit_test(Map *map, float max_distance, int previous, float x, float y, float z, float vx, float vy, float vz, int *hx, int *hy, int *hz)
 {
 
