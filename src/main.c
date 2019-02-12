@@ -807,7 +807,6 @@ static void player_collide(Player *player, int x, int y, int z)
             {
 
                 Chunk *chunk;
-                Map *map;
                 float normalx;
                 float normaly;
                 float normalz;
@@ -821,9 +820,7 @@ static void player_collide(Player *player, int x, int y, int z)
                 if (!chunk)
                     continue;
 
-                map = &chunk->map;
-
-                if (!is_obstacle(map_get(map, block.x, block.y, block.z)))
+                if (!is_obstacle(map_get(&chunk->map, block.x, block.y, block.z)))
                     continue;
 
                 if (!aabbcheck(&box, &block))
@@ -838,6 +835,10 @@ static void player_collide(Player *player, int x, int y, int z)
         }
 
     }
+
+    g->player.box.x += box.vx;
+    g->player.box.y += box.vy;
+    g->player.box.z += box.vz;
 
 }
 
@@ -2089,15 +2090,7 @@ static void handle_movement(double dt)
     g->player.box.vz *= ut * speed;
 
     for (int i = 0; i < step; i++)
-    {
-
-        g->player.box.x += g->player.box.vx;
-        g->player.box.y += g->player.box.vy;
-        g->player.box.z += g->player.box.vz;
-
         player_collide(&g->player, g->player.box.x, g->player.box.y, g->player.box.z);
-
-    }
 
 }
 
