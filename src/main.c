@@ -662,9 +662,17 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
     }
 
+    float entryTime = MAX(MAX(xEntry, yEntry), zEntry);
+    float exitTime = MIN(MIN(xExit, yExit), zExit);
+
     *normalx = 0.0f;
     *normaly = 0.0f;
     *normalz = 0.0f;
+
+/*
+    if (entryTime > exitTime || (xEntry < 0.0f && yEntry < 0.0f && zEntry < 0.0f) || xEntry > 1.0f || yEntry > 1.0f || zEntry > 1.0f)
+        return 1.0f;
+*/
 
     if (xEntry > yEntry && xEntry > zEntry)
     {
@@ -735,7 +743,7 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
     }
 
-    return 0;
+    return entryTime;
 
 }
 
@@ -792,11 +800,16 @@ static void player_collide(Player *player)
                 if (!aabbcheck(&box, &block))
                     continue;
 
-                aabbsweep(box, block, &normalx, &normaly, &normalz);
+                float collisiontime = aabbsweep(box, block, &normalx, &normaly, &normalz);
 
-                box.vx = box.vx - box.vx * normalx;
-                box.vy = box.vy - box.vy * normaly;
-                box.vz = box.vz - box.vz * normalz;
+                if (collisiontime < 1.0f)
+                {
+
+                    box.vx = box.vx - box.vx * abs(normalx);
+                    box.vy = box.vy - box.vy * abs(normaly);
+                    box.vz = box.vz - box.vz * abs(normalz);
+
+                }
 
             }
 
@@ -1940,7 +1953,7 @@ static void handle_movement(double dt)
 {
 
     int exclusive = glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-    float speed = g->flying ? 32 : 8;
+    float speed = g->flying ? 8 : 8;
     int step = 8;
     float ut = dt / step;
     int sz = 0;
