@@ -753,9 +753,9 @@ static void player_collide(Player *player)
     Box box;
     Box block;
 
-    box.x = player->box.x;
-    box.y = player->box.y;
-    box.z = player->box.z;
+    box.x = player->box.x + player->box.vx;
+    box.y = player->box.y + player->box.vy;
+    box.z = player->box.z + player->box.vz;
     box.lx = 1.0;
     box.ly = 1.0;
     box.lz = 1.0;
@@ -786,9 +786,9 @@ static void player_collide(Player *player)
                 float normaly;
                 float normalz;
 
-                block.x = (int)player->box.x + kx;
-                block.y = (int)player->box.y + ky;
-                block.z = (int)player->box.z + kz;
+                block.x = (int)box.x + kx;
+                block.y = (int)box.y + ky;
+                block.z = (int)box.z + kz;
                 chunk = find_chunk(chunked(block.x), chunked(block.z));
 
                 if (!chunk)
@@ -805,9 +805,9 @@ static void player_collide(Player *player)
                 if (collisiontime < 1.0f)
                 {
 
-                    box.vx = box.vx - box.vx * abs(normalx);
-                    box.vy = box.vy - box.vy * abs(normaly);
-                    box.vz = box.vz - box.vz * abs(normalz);
+                    box.vx = box.vx * normalx;
+                    box.vy = box.vy * normaly;
+                    box.vz = box.vz * normalz;
 
                 }
 
