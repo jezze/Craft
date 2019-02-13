@@ -817,9 +817,9 @@ static void player_collide(Player *player)
 
     }
 
-    g->player.box.x += box.vx;
-    g->player.box.y += box.vy;
-    g->player.box.z += box.vz;
+    player->box.x += box.vx;
+    player->box.y += box.vy;
+    player->box.z += box.vz;
 
 }
 
