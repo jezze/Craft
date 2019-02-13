@@ -686,7 +686,7 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
         }
 
-        else if (xInvEntry > 0x0f)
+        else
         {
 
             *normalx = -1.0f;
@@ -709,7 +709,7 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
         }
 
-        else if (yInvEntry > 0.0f)
+        else
         {
 
             *normalx = 0.0f;
@@ -732,7 +732,7 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
         }
 
-        else if (zInvEntry > 0.0f)
+        else
         {
 
             *normalx = 0.0f;
