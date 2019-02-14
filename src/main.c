@@ -558,7 +558,7 @@ static unsigned int aabbcheck(Box *b1, Box *b2)
 
 }
 
-static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *normalz)
+static float aabbsweep(Box *b1, Box *b2, float *normalx, float *normaly, float *normalz)
 {
 
     float xInvEntry, yInvEntry, zInvEntry;
@@ -566,55 +566,55 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
     float xEntry, yEntry, zEntry;
     float xExit, yExit, zExit;
 
-    if (b1.vx > 0.0f)
+    if (b1->vx > 0.0f)
     {
 
-        xInvEntry = b2.x - (b1.x + b1.lx);
-        xInvExit = (b2.x + b2.lx) - b1.x;
+        xInvEntry = b2->x - (b1->x + b1->lx);
+        xInvExit = (b2->x + b2->lx) - b1->x;
 
     }
 
     else
     {
 
-        xInvEntry = (b2.x + b2.lx) - b1.x;
-        xInvExit = b2.x - (b1.x + b1.lx);
+        xInvEntry = (b2->x + b2->lx) - b1->x;
+        xInvExit = b2->x - (b1->x + b1->lx);
 
     }
 
-    if (b1.vy > 0.0f)
+    if (b1->vy > 0.0f)
     {
 
-        yInvEntry = b2.y - (b1.y + b1.ly);
-        yInvExit = (b2.y + b2.ly) - b1.y;
+        yInvEntry = b2->y - (b1->y + b1->ly);
+        yInvExit = (b2->y + b2->ly) - b1->y;
 
     }
 
     else
     {
 
-        yInvEntry = (b2.y + b2.ly) - b1.y;
-        yInvExit = b2.y - (b1.y + b1.ly);
+        yInvEntry = (b2->y + b2->ly) - b1->y;
+        yInvExit = b2->y - (b1->y + b1->ly);
 
     }
 
-    if (b1.vz > 0.0f)
+    if (b1->vz > 0.0f)
     {
 
-        zInvEntry = b2.z - (b1.z + b1.lz);
-        zInvExit = (b2.z + b2.lz) - b1.z;
+        zInvEntry = b2->z - (b1->z + b1->lz);
+        zInvExit = (b2->z + b2->lz) - b1->z;
 
     }
 
     else
     {
 
-        zInvEntry = (b2.z + b2.lz) - b1.z;
-        zInvExit = b2.z - (b1.z + b1.lz);
+        zInvEntry = (b2->z + b2->lz) - b1->z;
+        zInvExit = b2->z - (b1->z + b1->lz);
 
     }
 
-    if (b1.vx == 0.0f)
+    if (b1->vx == 0.0f)
     {
 
         xEntry = 0;
@@ -625,12 +625,12 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
     else
     {
 
-        xEntry = xInvEntry / b1.vx;
-        xExit = xInvExit / b1.vx;
+        xEntry = xInvEntry / b1->vx;
+        xExit = xInvExit / b1->vx;
 
     }
 
-    if (b1.vy == 0.0f)
+    if (b1->vy == 0.0f)
     {
 
         yEntry = 0;
@@ -641,12 +641,12 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
     else
     {
 
-        yEntry = yInvEntry / b1.vy;
-        yExit = yInvExit / b1.vy;
+        yEntry = yInvEntry / b1->vy;
+        yExit = yInvExit / b1->vy;
 
     }
 
-    if (b1.vz == 0.0f)
+    if (b1->vz == 0.0f)
     {
 
         zEntry = 0;
@@ -657,8 +657,8 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
     else
     {
 
-        zEntry = zInvEntry / b1.vz;
-        zExit = zInvExit / b1.vz;
+        zEntry = zInvEntry / b1->vz;
+        zExit = zInvExit / b1->vz;
 
     }
 
@@ -747,24 +747,24 @@ static float aabbsweep(Box b1, Box b2, float *normalx, float *normaly, float *no
 
 }
 
-static void player_collide(Player *player)
+static void player_collide(Player *player, int x, int y, int z)
 {
 
     Box box;
     Box block;
 
-    box.x = player->box.x + player->box.vx;
+    box.x = player->box.x + player->box.vx + 0.2;
     box.y = player->box.y + player->box.vy;
-    box.z = player->box.z + player->box.vz;
-    box.lx = 1.0;
+    box.z = player->box.z + player->box.vz + 0.2;
+    box.lx = 0.6;
     box.ly = 1.0;
-    box.lz = 1.0;
+    box.lz = 0.6;
     box.vx = player->box.vx;
     box.vy = player->box.vy;
     box.vz = player->box.vz;
-    block.x = (int)player->box.x;
-    block.y = (int)player->box.y;
-    block.z = (int)player->box.z;
+    block.x = x;
+    block.y = y;
+    block.z = z;
     block.lx = 1.0;
     block.ly = 1.0;
     block.lz = 1.0;
@@ -786,9 +786,9 @@ static void player_collide(Player *player)
                 float normaly;
                 float normalz;
 
-                block.x = (int)box.x + kx;
-                block.y = (int)box.y + ky;
-                block.z = (int)box.z + kz;
+                block.x = x + kx;
+                block.y = y + ky;
+                block.z = z + kz;
                 chunk = find_chunk(chunked(block.x), chunked(block.z));
 
                 if (!chunk)
@@ -800,16 +800,16 @@ static void player_collide(Player *player)
                 if (!aabbcheck(&box, &block))
                     continue;
 
-                float collisiontime = aabbsweep(box, block, &normalx, &normaly, &normalz);
+                float collisiontime = aabbsweep(&box, &block, &normalx, &normaly, &normalz);
 
-                if (collisiontime < 1.0f)
-                {
+                if (normalx)
+                    box.vx = 0;
 
-                    box.vx = box.vx * normalx;
-                    box.vy = box.vy * normaly;
-                    box.vz = box.vz * normalz;
+                if (normaly)
+                    box.vy = 0;
 
-                }
+                if (normalz)
+                    box.vz = 0;
 
             }
 
@@ -1949,13 +1949,11 @@ static void onmousebutton(GLFWwindow *window, int button, int action, int mods)
 
 }
 
-static void handle_movement(double dt)
+static void handle_movement(void)
 {
 
     int exclusive = glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-    float speed = g->flying ? 8 : 8;
-    int step = 8;
-    float ut = dt / step;
+    float speed = g->flying ? 0.18 : 0.1;
     int sz = 0;
     int sx = 0;
     static double px = 0;
@@ -2068,12 +2066,16 @@ static void handle_movement(double dt)
 
     }
 
-    g->player.box.vx *= ut * speed;
-    g->player.box.vy *= ut * speed;
-    g->player.box.vz *= ut * speed;
+    g->player.box.vx *= speed;
+    g->player.box.vy *= speed;
+    g->player.box.vz *= speed;
 
-    for (int i = 0; i < step; i++)
-        player_collide(&g->player);
+    player_collide(&g->player, g->player.box.x, g->player.box.y, g->player.box.z);
+
+    g->player.box.vx = 0;
+    g->player.box.vy = 0;
+    g->player.box.vz = 0;
+
 
 }
 
@@ -2370,7 +2372,7 @@ int main(int argc, char **argv)
         dt = MIN(dt, 0.2);
         dt = MAX(dt, 0.0);
 
-        handle_movement(dt);
+        handle_movement();
         delete_chunks();
         load_chunks(&g->player, 1, 9);
         load_chunks(&g->player, g->render_radius, 1);
