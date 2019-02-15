@@ -772,6 +772,10 @@ static void player_collide(Player *player, int x, int y, int z)
     block.vy = 0.0;
     block.vz = 0.0;
 
+    float newx = player->box.vx;
+    float newy = player->box.vy;
+    float newz = player->box.vz;
+
     for (int kx = -1; kx <= 1; kx++)
     {
 
@@ -803,13 +807,13 @@ static void player_collide(Player *player, int x, int y, int z)
                 float collisiontime = aabbsweep(&box, &block, &normalx, &normaly, &normalz);
 
                 if (normalx)
-                    box.vx = 0;
+                    newx = 0;
 
                 if (normaly)
-                    box.vy = 0;
+                    newy = 0;
 
                 if (normalz)
-                    box.vz = 0;
+                    newz = 0;
 
             }
 
@@ -817,9 +821,9 @@ static void player_collide(Player *player, int x, int y, int z)
 
     }
 
-    player->box.x += box.vx;
-    player->box.y += box.vy;
-    player->box.z += box.vz;
+    player->box.x += newx;
+    player->box.y += newy;
+    player->box.z += newz;
 
 }
 
