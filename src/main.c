@@ -843,9 +843,6 @@ static void compute_chunk(Chunk *chunk)
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
 
-        if (ew <= 0)
-            continue;
-
         int x = ex - ox;
         int y = ey - oy;
         int z = ez - oz;
@@ -871,9 +868,6 @@ static void compute_chunk(Chunk *chunk)
     int offset = 0;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
-
-        if (ew <= 0)
-            continue;
 
         int x = ex - ox;
         int y = ey - oy;
