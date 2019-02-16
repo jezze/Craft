@@ -1947,7 +1947,6 @@ int main(int argc, char **argv)
     initrng();
 
     double last_update = glfwGetTime();
-    double previous = last_update;
     int running = 1;
 
     g->player.box.x = 0;
@@ -1977,9 +1976,6 @@ int main(int argc, char **argv)
 
         double now = glfwGetTime();
         double elapsed = now - g->since;
-        double dt = now - previous;
-
-        previous = now;
 
         if (now - last_update > 0.1)
             last_update = now;
@@ -1992,9 +1988,6 @@ int main(int argc, char **argv)
             g->since = now;
 
         }
-
-        dt = MIN(dt, 0.2);
-        dt = MAX(dt, 0.0);
 
         handle_movement();
         delete_chunks();
