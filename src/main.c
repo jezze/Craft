@@ -38,7 +38,6 @@ typedef struct
     int faces;
     int dirty;
     GLuint buffer;
-    GLfloat *data;
 
 } Chunk;
 
@@ -797,6 +796,7 @@ static void compute_chunk(Chunk *chunk)
     int oz = chunk->q * CHUNK_SIZE - 1;
     int offset = 0;
     unsigned int i;
+    GLfloat *data;
 
     for (i = 0; i <= map->mask; i++)
     {
@@ -861,7 +861,7 @@ static void compute_chunk(Chunk *chunk)
 
     }
 
-    chunk->data = malloc(sizeof(GLfloat) * 60 * chunk->faces);
+    data = malloc(sizeof(GLfloat) * 60 * chunk->faces);
 
     for (i = 0; i <= map->mask; i++)
     {
@@ -887,7 +887,7 @@ static void compute_chunk(Chunk *chunk)
 
             total = 4;
 
-            make_plant(chunk->data + offset, 0.0, 1.0, ex, ey, ez, 0.5, entry->e.w, rotation);
+            make_plant(data + offset, 0.0, 1.0, ex, ey, ez, 0.5, entry->e.w, rotation);
 
         }
 
@@ -928,7 +928,7 @@ static void compute_chunk(Chunk *chunk)
             if (total == 0)
                 continue;
 
-            make_cube(chunk->data + offset, ao, light, faces, blocks[entry->e.w], ex, ey, ez, 0.5);
+            make_cube(data + offset, ao, light, faces, blocks[entry->e.w], ex, ey, ez, 0.5);
 
         }
 
@@ -938,9 +938,9 @@ static void compute_chunk(Chunk *chunk)
 
     del_buffer(chunk->buffer);
 
-    chunk->buffer = gen_buffer(sizeof(GLfloat) * 60 * chunk->faces, chunk->data);
+    chunk->buffer = gen_buffer(sizeof(GLfloat) * 60 * chunk->faces, data);
 
-    free(chunk->data);
+    free(data);
     free(opaque);
 
 }
