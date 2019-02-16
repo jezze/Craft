@@ -821,7 +821,6 @@ static void compute_chunk(Chunk *chunk)
 {
 
     char *opaque = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
-    char *light = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
     char *highest = (char *)calloc(XZ_SIZE * XZ_SIZE, sizeof(char));
     int ox = chunk->p * CHUNK_SIZE - 1;
     int oy = -1;
@@ -896,6 +895,9 @@ static void compute_chunk(Chunk *chunk)
         if (total == 0)
             continue;
 
+        if (is_plant(ew))
+            total = 4;
+
         float ao[6][4] = {0};
         float light[6][4] = {
             {0.5, 0.5, 0.5, 0.5},
@@ -909,27 +911,9 @@ static void compute_chunk(Chunk *chunk)
         if (is_plant(ew))
         {
 
-            total = 4;
-
-            float min_ao = 1;
-            float max_light = 0;
-
-            for (int a = 0; a < 6; a++)
-            {
-
-                for (int b = 0; b < 4; b++)
-                {
-
-                    min_ao = MIN(min_ao, ao[a][b]);
-                    max_light = MAX(max_light, light[a][b]);
-
-                }
-
-            }
-
             float rotation = noise_simplex2(ex, ez, 4, 0.5, 2) * 360;
 
-            make_plant(chunk->data + offset, min_ao, max_light, ex, ey, ez, 0.5, ew, rotation);
+            make_plant(chunk->data + offset, 0.0, 1.0, ex, ey, ez, 0.5, ew, rotation);
 
         }
 
@@ -945,7 +929,6 @@ static void compute_chunk(Chunk *chunk)
     } END_MAP_FOR_EACH;
 
     free(opaque);
-    free(light);
     free(highest);
 
 }
