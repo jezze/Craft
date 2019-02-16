@@ -16,18 +16,15 @@
 #define CRAFT_KEY_CROUCH                GLFW_KEY_LEFT_SHIFT
 #define CRAFT_KEY_FLY                   GLFW_KEY_TAB
 #define RENDER_CHUNK_RADIUS             8
-#define MAX_CHUNKS                      8192
+#define MAX_CHUNKS                      1025
 #define MAX_TEXT_LENGTH                 256
 #define ALIGN_LEFT                      0
 #define ALIGN_CENTER                    1
 #define ALIGN_RIGHT                     2
 #define CHUNK_SIZE                      32
 #define XZ_SIZE                         (CHUNK_SIZE * 2)
-#define XZ_LO                           (CHUNK_SIZE)
-#define XZ_HI                           (CHUNK_SIZE * 2)
 #define Y_SIZE                          256
 #define XYZ(x, y, z)                    ((y) * XZ_SIZE * XZ_SIZE + (x) * XZ_SIZE + (z))
-#define XZ(x, z)                        ((x) * XZ_SIZE + (z))
 #define PI                              3.14159265359
 #define DEGREES(radians)                ((radians) * 180 / PI)
 #define RADIANS(degrees)                ((degrees) * PI / 180)
