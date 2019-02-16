@@ -182,24 +182,6 @@ static void del_buffer(GLuint buffer)
 
 }
 
-static GLfloat *malloc_faces(int components, int faces)
-{
-
-    return malloc(sizeof(GLfloat) * 6 * components * faces);
-
-}
-
-static GLuint gen_faces(int components, int faces, GLfloat *data)
-{
-
-    GLuint buffer = gen_buffer(sizeof(GLfloat) * 6 * components * faces, data);
-
-    free(data);
-
-    return buffer;
-
-}
-
 static GLuint gen_crosshair_buffer(void)
 {
 
@@ -266,7 +248,8 @@ static GLuint gen_text_buffer(float x, float y, float n, char *text)
 
     int length = strlen(text);
 
-    GLfloat *data = malloc_faces(4, length);
+    GLfloat *data = malloc(sizeof(GLfloat) * 24 * length);
+    GLuint buffer;
 
     for (int i = 0; i < length; i++)
     {
@@ -277,7 +260,11 @@ static GLuint gen_text_buffer(float x, float y, float n, char *text)
 
     }
 
-    return gen_faces(4, length, data);
+    buffer = gen_buffer(sizeof(GLfloat) * 24 * length, data);
+
+    free(data);
+
+    return buffer;
 
 }
 
@@ -860,7 +847,7 @@ static void compute_chunk(Chunk *chunk)
 
     } END_MAP_FOR_EACH;
 
-    chunk->data = malloc_faces(10, chunk->faces);
+    chunk->data = malloc(sizeof(GLfloat) * 60 * chunk->faces);
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
 
@@ -924,6 +911,11 @@ static void compute_chunk(Chunk *chunk)
 
     } END_MAP_FOR_EACH;
 
+    del_buffer(chunk->buffer);
+
+    chunk->buffer = gen_buffer(sizeof(GLfloat) * 60 * chunk->faces, chunk->data);
+
+    free(chunk->data);
     free(opaque);
 
 }
@@ -1104,9 +1096,7 @@ static void load_chunks(Player *player, int radius, int max)
             {
 
                 compute_chunk(chunk);
-                del_buffer(chunk->buffer);
 
-                chunk->buffer = gen_faces(10, chunk->faces, chunk->data);
                 chunk->dirty = 0;
 
                 if (--max <= 0)
