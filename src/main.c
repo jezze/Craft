@@ -33,7 +33,6 @@ typedef struct
 {
 
     Map map;
-    Map lights;
     int p;
     int q;
     int faces;
@@ -925,34 +924,6 @@ static void occlusion(char neighbors[27], char lights[27], float shades[27], flo
 
 }
 
-static void light_fill(char *opaque, char *light, int x, int y, int z, int w, int force)
-{
-
-    if (x + w < XZ_LO || z + w < XZ_LO)
-        return;
-
-    if (x - w > XZ_HI || z - w > XZ_HI)
-        return;
-
-    if (y < 0 || y >= Y_SIZE)
-        return;
-
-    if (light[XYZ(x, y, z)] >= w)
-        return;
-
-    if (!force && opaque[XYZ(x, y, z)])
-        return;
-
-    light[XYZ(x, y, z)] = w--;
-    light_fill(opaque, light, x - 1, y, z, w, 0);
-    light_fill(opaque, light, x + 1, y, z, w, 0);
-    light_fill(opaque, light, x, y - 1, z, w, 0);
-    light_fill(opaque, light, x, y + 1, z, w, 0);
-    light_fill(opaque, light, x, y, z - 1, w, 0);
-    light_fill(opaque, light, x, y, z + 1, w, 0);
-
-}
-
 static void compute_chunk(Chunk *chunk)
 {
 
@@ -962,9 +933,7 @@ static void compute_chunk(Chunk *chunk)
     int ox = chunk->p * CHUNK_SIZE - CHUNK_SIZE - 1;
     int oy = -1;
     int oz = chunk->q * CHUNK_SIZE - CHUNK_SIZE - 1;
-    int has_light = 0;
     Map *block_maps[3][3];
-    Map *light_maps[3][3];
 
     for (int dp = -1; dp <= 1; dp++)
     {
@@ -981,7 +950,6 @@ static void compute_chunk(Chunk *chunk)
             {
 
                 block_maps[dp + 1][dq + 1] = &other->map;
-                light_maps[dp + 1][dq + 1] = &other->lights;
 
             }
 
@@ -989,24 +957,8 @@ static void compute_chunk(Chunk *chunk)
             {
 
                 block_maps[dp + 1][dq + 1] = 0;
-                light_maps[dp + 1][dq + 1] = 0;
 
             }
-
-        }
-
-    }
-
-    for (int a = 0; a < 3; a++)
-    {
-
-        for (int b = 0; b < 3; b++)
-        {
-
-            Map *map = light_maps[a][b];
-
-            if (map && map->size)
-                has_light = 1;
 
         }
 
@@ -1046,36 +998,6 @@ static void compute_chunk(Chunk *chunk)
                     highest[XZ(x, z)] = MAX(highest[XZ(x, z)], y);
 
             } END_MAP_FOR_EACH;
-
-        }
-
-    }
-
-    if (has_light)
-    {
-
-        for (int a = 0; a < 3; a++)
-        {
-
-            for (int b = 0; b < 3; b++)
-            {
-
-                Map *map = light_maps[a][b];
-
-                if (!map)
-                    continue;
-
-                MAP_FOR_EACH(map, ex, ey, ez, ew) {
-
-                    int x = ex - ox;
-                    int y = ey - oy;
-                    int z = ez - oz;
-
-                    light_fill(opaque, light, x, y, z, ew, 1);
-
-                } END_MAP_FOR_EACH;
-
-            }
 
         }
 
@@ -1348,7 +1270,6 @@ static void create_chunk(Chunk *chunk, int p, int q)
     chunk->dirty = 1;
 
     map_alloc(&chunk->map, dx, dy, dz, 0x7fff);
-    map_alloc(&chunk->lights, dx, dy, dz, 0xf);
 
     createworld(&chunk->map, chunk->p, chunk->q);
 
@@ -1381,7 +1302,6 @@ static void delete_chunks()
         {
 
             map_free(&chunk->map);
-            map_free(&chunk->lights);
             del_buffer(chunk->buffer);
 
             Chunk *other = g->chunks + (--count);
@@ -1405,7 +1325,6 @@ static void delete_all_chunks()
         Chunk *chunk = g->chunks + i;
 
         map_free(&chunk->map);
-        map_free(&chunk->lights);
         del_buffer(chunk->buffer);
 
     }
@@ -1475,14 +1394,6 @@ static void setblock(int x, int y, int z, int w)
     {
 
         if (map_set(&chunk->map, x, y, z, w))
-            dirty_chunk(chunk, 1);
-
-    }
-
-    if (w == 0 && chunked(x) == p && chunked(z) == q)
-    {
-
-        if (map_set(&chunk->lights, x, y, z, w))
             dirty_chunk(chunk, 1);
 
     }
@@ -1664,33 +1575,6 @@ static void parse_command(const char *buffer)
         {
 
             add_message("Viewing distance must be between 1 and 24.");
-
-        }
-
-    }
-
-}
-
-static void addlight(void)
-{
-
-    int hx, hy, hz, hw;
-
-    hw = hit_test(0, &g->player, &hx, &hy, &hz);
-
-    if (hy > 0 && hy < 256 && is_destructable(hw))
-    {
-
-        Chunk *chunk = find_chunk(chunked(hx), chunked(hz));
-
-        if (chunk)
-        {
-
-            int w = map_get(&chunk->lights, hx, hy, hz);
-
-            map_set(&chunk->lights, hx, hy, hz, w ? 0 : 15);
-
-            dirty_chunk(chunk, 1);
 
         }
 
@@ -1912,7 +1796,6 @@ static void onscroll(GLFWwindow *window, double xdelta, double ydelta)
 static void onmousebutton(GLFWwindow *window, int button, int action, int mods)
 {
 
-    int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
     int exclusive = glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
 
     if (action != GLFW_PRESS)
@@ -1932,14 +1815,7 @@ static void onmousebutton(GLFWwindow *window, int button, int action, int mods)
     {
 
         if (exclusive)
-        {
-
-            if (control)
-                addlight();
-            else
-                addblock();
-
-        }
+            addblock();
 
     }
 
