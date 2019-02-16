@@ -379,54 +379,6 @@ static int chunk_distance(Chunk *chunk, int p, int q)
 
 }
 
-static int chunk_visible(float planes[6][4], int p, int q, int miny, int maxy)
-{
-
-    int x = p * CHUNK_SIZE - 1;
-    int z = q * CHUNK_SIZE - 1;
-    int d = CHUNK_SIZE + 1;
-    int n = g->ortho ? 4 : 6;
-    float points[8][3] = {
-        {x + 0, miny, z + 0},
-        {x + d, miny, z + 0},
-        {x + 0, miny, z + d},
-        {x + d, miny, z + d},
-        {x + 0, maxy, z + 0},
-        {x + d, maxy, z + 0},
-        {x + 0, maxy, z + d},
-        {x + d, maxy, z + d}
-    };
-
-    for (int i = 0; i < n; i++)
-    {
-
-        int in = 0;
-        int out = 0;
-
-        for (int j = 0; j < 8; j++)
-        {
-
-            float d = planes[i][0] * points[j][0] + planes[i][1] * points[j][1] + planes[i][2] * points[j][2] + planes[i][3];
-
-            if (d < 0)
-                out++;
-            else
-                in++;
-
-            if (in && out)
-                break;
-
-        }
-
-        if (in == 0)
-            return 0;
-
-    }
-
-    return 1;
-
-}
-
 static int _hit_test(Map *map, float max_distance, int previous, float x, float y, float z, float vx, float vy, float vz, int *hx, int *hy, int *hz)
 {
 
@@ -865,145 +817,30 @@ static void dirty_chunk(Chunk *chunk, int radius)
 
 }
 
-static void occlusion(char neighbors[27], char lights[27], float shades[27], float ao[6][4], float light[6][4])
-{
-
-    static const int lookup3[6][4][3] = {
-        {{0, 1, 3}, {2, 1, 5}, {6, 3, 7}, {8, 5, 7}},
-        {{18, 19, 21}, {20, 19, 23}, {24, 21, 25}, {26, 23, 25}},
-        {{6, 7, 15}, {8, 7, 17}, {24, 15, 25}, {26, 17, 25}},
-        {{0, 1, 9}, {2, 1, 11}, {18, 9, 19}, {20, 11, 19}},
-        {{0, 3, 9}, {6, 3, 15}, {18, 9, 21}, {24, 15, 21}},
-        {{2, 5, 11}, {8, 5, 17}, {20, 11, 23}, {26, 17, 23}}
-    };
-
-    static const int lookup4[6][4][4] = {
-        {{0, 1, 3, 4}, {1, 2, 4, 5}, {3, 4, 6, 7}, {4, 5, 7, 8}},
-        {{18, 19, 21, 22}, {19, 20, 22, 23}, {21, 22, 24, 25}, {22, 23, 25, 26}},
-        {{6, 7, 15, 16}, {7, 8, 16, 17}, {15, 16, 24, 25}, {16, 17, 25, 26}},
-        {{0, 1, 9, 10}, {1, 2, 10, 11}, {9, 10, 18, 19}, {10, 11, 19, 20}},
-        {{0, 3, 9, 12}, {3, 6, 12, 15}, {9, 12, 18, 21}, {12, 15, 21, 24}},
-        {{2, 5, 11, 14}, {5, 8, 14, 17}, {11, 14, 20, 23}, {14, 17, 23, 26}}
-    };
-
-    static const float curve[4] = {0.0, 0.25, 0.5, 0.75};
-
-    for (int i = 0; i < 6; i++)
-    {
-
-        for (int j = 0; j < 4; j++)
-        {
-
-            int corner = neighbors[lookup3[i][j][0]];
-            int side1 = neighbors[lookup3[i][j][1]];
-            int side2 = neighbors[lookup3[i][j][2]];
-            int value = side1 && side2 ? 3 : corner + side1 + side2;
-            float shade_sum = 0;
-            float light_sum = 0;
-            int is_light = lights[13] == 15;
-
-            for (int k = 0; k < 4; k++)
-            {
-
-                shade_sum += shades[lookup4[i][j][k]];
-                light_sum += lights[lookup4[i][j][k]];
-
-            }
-
-            if (is_light)
-                light_sum = 15 * 4 * 10;
-
-            float total = curve[value] + shade_sum / 4.0;
-
-            ao[i][j] = MIN(total, 1.0);
-            light[i][j] = light_sum / 15.0 / 4.0;
-
-        }
-
-    }
-
-}
-
 static void compute_chunk(Chunk *chunk)
 {
 
     char *opaque = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
     char *light = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
     char *highest = (char *)calloc(XZ_SIZE * XZ_SIZE, sizeof(char));
-    int ox = chunk->p * CHUNK_SIZE - CHUNK_SIZE - 1;
+    int ox = chunk->p * CHUNK_SIZE - 1;
     int oy = -1;
-    int oz = chunk->q * CHUNK_SIZE - CHUNK_SIZE - 1;
-    Map *block_maps[3][3];
+    int oz = chunk->q * CHUNK_SIZE - 1;
+    Map *map = &chunk->map;
 
-    for (int dp = -1; dp <= 1; dp++)
-    {
+    MAP_FOR_EACH(map, ex, ey, ez, ew) {
 
-        for (int dq = -1; dq <= 1; dq++)
-        {
+        int x = ex - ox;
+        int y = ey - oy;
+        int z = ez - oz;
+        int w = ew;
 
-            Chunk *other = chunk;
+        opaque[XYZ(x, y, z)] = !is_transparent(w);
 
-            if (dp || dq)
-                other = find_chunk(chunk->p + dp, chunk->q + dq);
+        if (opaque[XYZ(x, y, z)])
+            highest[XZ(x, z)] = MAX(highest[XZ(x, z)], y);
 
-            if (other)
-            {
-
-                block_maps[dp + 1][dq + 1] = &other->map;
-
-            }
-
-            else
-            {
-
-                block_maps[dp + 1][dq + 1] = 0;
-
-            }
-
-        }
-
-    }
-
-    for (int a = 0; a < 3; a++)
-    {
-
-        for (int b = 0; b < 3; b++)
-        {
-
-            Map *map = block_maps[a][b];
-
-            if (!map)
-                continue;
-
-            MAP_FOR_EACH(map, ex, ey, ez, ew) {
-
-                int x = ex - ox;
-                int y = ey - oy;
-                int z = ez - oz;
-                int w = ew;
-
-                // TODO: this should be unnecessary
-
-                if (x < 0 || y < 0 || z < 0)
-                    continue;
-
-                if (x >= XZ_SIZE || y >= Y_SIZE || z >= XZ_SIZE)
-                    continue;
-
-                // END TODO
-
-                opaque[XYZ(x, y, z)] = !is_transparent(w);
-
-                if (opaque[XYZ(x, y, z)])
-                    highest[XZ(x, z)] = MAX(highest[XZ(x, z)], y);
-
-            } END_MAP_FOR_EACH;
-
-        }
-
-    }
-
-    Map *map = block_maps[1][1];
+    } END_MAP_FOR_EACH;
 
     chunk->miny = 256;
     chunk->maxy = 0;
@@ -1059,55 +896,15 @@ static void compute_chunk(Chunk *chunk)
         if (total == 0)
             continue;
 
-        char neighbors[27] = {0};
-        char lights[27] = {0};
-        float shades[27] = {0};
-        int index = 0;
-
-        for (int dx = -1; dx <= 1; dx++)
-        {
-
-            for (int dy = -1; dy <= 1; dy++)
-            {
-
-                for (int dz = -1; dz <= 1; dz++)
-                {
-
-                    neighbors[index] = opaque[XYZ(x + dx, y + dy, z + dz)];
-                    lights[index] = light[XYZ(x + dx, y + dy, z + dz)];
-                    shades[index] = 0;
-
-                    if (y + dy <= highest[XZ(x + dx, z + dz)])
-                    {
-
-                        for (int oy = 0; oy < 8; oy++)
-                        {
-
-                            if (opaque[XYZ(x + dx, y + dy + oy, z + dz)])
-                            {
-
-                                shades[index] = 1.0 - oy * 0.125;
-
-                                break;
-
-                            }
-
-                        }
-
-                    }
-
-                    index++;
-
-                }
-
-            }
-
-        }
-
-        float ao[6][4];
-        float light[6][4];
-
-        occlusion(neighbors, lights, shades, ao, light);
+        float ao[6][4] = {0};
+        float light[6][4] = {
+            {0.5, 0.5, 0.5, 0.5},
+            {0.5, 0.5, 0.5, 0.5},
+            {0.5, 0.5, 0.5, 0.5},
+            {0.5, 0.5, 0.5, 0.5},
+            {0.5, 0.5, 0.5, 0.5},
+            {0.5, 0.5, 0.5, 0.5}
+        };
 
         if (is_plant(ew))
         {
@@ -1207,39 +1004,6 @@ static void createworld(Map *map, int p, int q)
 
                 }
 
-                int ok = 1;
-
-                if (dx - 4 < 0 || dz - 4 < 0 || dx + 4 >= CHUNK_SIZE || dz + 4 >= CHUNK_SIZE)
-                    ok = 0;
-
-                if (ok && noise_simplex2(x, z, 6, 0.5, 2) > 0.84)
-                {
-
-                    for (y = h + 3; y < h + 8; y++)
-                    {
-
-                        for (int ox = -3; ox <= 3; ox++)
-                        {
-
-                            for (int oz = -3; oz <= 3; oz++)
-                            {
-
-                                int d = (ox * ox) + (oz * oz) + (y - (h + 4)) * (y - (h + 4));
-
-                                if (d < 11)
-                                    map_set(map, x + ox, y, z + oz, LEAVES);
-
-                            }
-
-                        }
-
-                    }
-
-                    for (y = h; y < h + 7; y++)
-                        map_set(map, x, y, z, WOOD);
-
-                }
-
             }
 
             for (y = 64; y < 72; y++)
@@ -1259,18 +1023,13 @@ static void createworld(Map *map, int p, int q)
 static void create_chunk(Chunk *chunk, int p, int q)
 {
 
-    int dx = p * CHUNK_SIZE - 1;
-    int dy = 0;
-    int dz = q * CHUNK_SIZE - 1;
-
     chunk->p = p;
     chunk->q = q;
     chunk->faces = 0;
     chunk->buffer = 0;
     chunk->dirty = 1;
 
-    map_alloc(&chunk->map, dx, dy, dz, 0x7fff);
-
+    map_alloc(&chunk->map, chunk->p * CHUNK_SIZE, 0, chunk->q * CHUNK_SIZE, 0x7fff);
     createworld(&chunk->map, chunk->p, chunk->q);
 
 }
@@ -1439,9 +1198,6 @@ static void render_chunks(Attrib *attrib, Player *player)
         Chunk *chunk = g->chunks + i;
 
         if (chunk_distance(chunk, p, q) > g->render_radius)
-            continue;
-
-        if (!chunk_visible(planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
             continue;
 
         draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
