@@ -99,7 +99,6 @@ typedef struct
     int scale;
     int ortho;
     float fov;
-    int mode_changed;
     int day_length;
     unsigned int fps;
     unsigned int frames;
@@ -1138,7 +1137,7 @@ static void setblock(int x, int y, int z, int w)
 
 }
 
-static int get_block(int x, int y, int z)
+static int getblock(int x, int y, int z)
 {
 
     Chunk *chunk = find_chunk(chunked(x), chunked(z));
@@ -1346,7 +1345,7 @@ static void removeblock(void)
 
         setblock(hx, hy, hz, 0);
 
-        if (is_plant(get_block(hx, hy + 1, hz)))
+        if (is_plant(getblock(hx, hy + 1, hz)))
             setblock(hx, hy + 1, hz, 0);
 
     }
@@ -2037,15 +2036,6 @@ int main(int argc, char **argv)
         {
 
             running = 0;
-
-            break;
-
-        }
-
-        if (g->mode_changed)
-        {
-
-            g->mode_changed = 0;
 
             break;
 
