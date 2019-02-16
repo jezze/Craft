@@ -800,26 +800,6 @@ static int player_intersects_block(int height, Player *player, int hx, int hy, i
 
 }
 
-static void dirty_chunk(Chunk *chunk, int radius)
-{
-
-    for (int dp = -radius; dp <= radius; dp++)
-    {
-
-        for (int dq = -radius; dq <= radius; dq++)
-        {
-
-            Chunk *neighbour = find_chunk(chunk->p + dp, chunk->q + dq);
-
-            if (neighbour)
-                neighbour->dirty = 1;
-
-        }
-
-    }
-
-}
-
 static void compute_chunk(Chunk *chunk)
 {
 
@@ -1141,7 +1121,7 @@ static void setblock(int x, int y, int z, int w)
     {
 
         if (map_set(&chunk->map, x, y, z, w))
-            dirty_chunk(chunk, 1);
+            chunk->dirty = 1;
 
     }
 
