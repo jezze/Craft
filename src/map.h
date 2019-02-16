@@ -4,7 +4,7 @@ typedef union {
         unsigned char x;
         unsigned char y;
         unsigned char z;
-        char w;
+        unsigned char w;
     } e;
 } MapEntry;
 

@@ -4,21 +4,13 @@
 #include "item.h"
 #include "matrix.h"
 
-void make_cube(float *data, float ao[6][4], float light[6][4], int left, int right, int top, int bottom, int front, int back, float x, float y, float z, float n, int w)
+void make_cube(float *data, float ao[6][4], float light[6][4], int faces[6], const int *tiles, float x, float y, float z, float n)
 {
 
     float *d = data;
     float s = 0.0625;
     float a = 0 + 1 / 2048.0;
     float b = s - 1 / 2048.0;
-    int wleft = blocks[w][0];
-    int wright = blocks[w][1];
-    int wtop = blocks[w][2];
-    int wbottom = blocks[w][3];
-    int wfront = blocks[w][4];
-    int wback = blocks[w][5];
-    int faces[6] = {left, right, top, bottom, front, back};
-    int tiles[6] = {wleft, wright, wtop, wbottom, wfront, wback};
 
     static const float positions[6][4][3] = {
         {{-1, -1, -1}, {-1, -1, +1}, {-1, +1, -1}, {-1, +1, +1}},

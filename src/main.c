@@ -209,6 +209,7 @@ static GLuint gen_cube_buffer(float x, float y, float z, float n, int w)
 {
 
     GLfloat data[360];
+    int faces[6] = {1, 1, 1, 1, 1, 1};
     float ao[6][4] = {
         {0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 0.0, 0.0},
@@ -226,7 +227,7 @@ static GLuint gen_cube_buffer(float x, float y, float z, float n, int w)
         {0.5, 0.5, 0.5, 0.5}
     };
 
-    make_cube(data, ao, light, 1, 1, 1, 1, 1, 1, x, y, z, n, w);
+    make_cube(data, ao, light, faces, blocks[w], x, y, z, n);
 
     return gen_buffer(sizeof(data), data);
 
@@ -844,15 +845,15 @@ static void compute_chunk(Chunk *chunk)
             int x = entry->e.x + map->dx - ox;
             int y = entry->e.y + map->dy - oy;
             int z = entry->e.z + map->dz - oz;
-            int f1 = !opaque[XYZ(x - 1, y, z)];
-            int f2 = !opaque[XYZ(x + 1, y, z)];
-            int f3 = !opaque[XYZ(x, y + 1, z)];
-            int f4 = !opaque[XYZ(x, y - 1, z)];
-            int f5 = !opaque[XYZ(x, y, z - 1)];
-            int f6 = !opaque[XYZ(x, y, z + 1)];
+            int faces[6];
 
-            total = f1 + f2 + f3 + f4 + f5 + f6;
-
+            faces[0] = !opaque[XYZ(x - 1, y, z)];
+            faces[1] = !opaque[XYZ(x + 1, y, z)];
+            faces[2] = !opaque[XYZ(x, y + 1, z)];
+            faces[3] = !opaque[XYZ(x, y - 1, z)];
+            faces[4] = !opaque[XYZ(x, y, z - 1)];
+            faces[5] = !opaque[XYZ(x, y, z + 1)];
+            total = faces[0] + faces[1] + faces[2] + faces[3] + faces[4] + faces[5];
 
         }
 
@@ -896,12 +897,7 @@ static void compute_chunk(Chunk *chunk)
             int x = entry->e.x + map->dx - ox;
             int y = entry->e.y + map->dy - oy;
             int z = entry->e.z + map->dz - oz;
-            int f1 = !opaque[XYZ(x - 1, y, z)];
-            int f2 = !opaque[XYZ(x + 1, y, z)];
-            int f3 = !opaque[XYZ(x, y + 1, z)];
-            int f4 = !opaque[XYZ(x, y - 1, z)];
-            int f5 = !opaque[XYZ(x, y, z - 1)];
-            int f6 = !opaque[XYZ(x, y, z + 1)];
+            int faces[6];
 
             float ao[6][4] = {
                 {0.0, 0.0, 0.0, 0.0},
@@ -921,12 +917,18 @@ static void compute_chunk(Chunk *chunk)
                 {0.5, 0.5, 0.5, 0.5}
             };
 
-            total = f1 + f2 + f3 + f4 + f5 + f6;
+            faces[0] = !opaque[XYZ(x - 1, y, z)];
+            faces[1] = !opaque[XYZ(x + 1, y, z)];
+            faces[2] = !opaque[XYZ(x, y + 1, z)];
+            faces[3] = !opaque[XYZ(x, y - 1, z)];
+            faces[4] = !opaque[XYZ(x, y, z - 1)];
+            faces[5] = !opaque[XYZ(x, y, z + 1)];
+            total = faces[0] + faces[1] + faces[2] + faces[3] + faces[4] + faces[5];
 
             if (total == 0)
                 continue;
 
-            make_cube(chunk->data + offset, ao, light, f1, f2, f3, f4, f5, f6, ex, ey, ez, 0.5, entry->e.w);
+            make_cube(chunk->data + offset, ao, light, faces, blocks[entry->e.w], ex, ey, ez, 0.5);
 
         }
 
