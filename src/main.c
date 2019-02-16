@@ -803,55 +803,11 @@ static int player_intersects_block(int height, Player *player, int hx, int hy, i
 static void compute_chunk(Chunk *chunk)
 {
 
+    Map *map = &chunk->map;
     char *opaque = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
     int ox = chunk->p * CHUNK_SIZE - 1;
     int oy = -1;
     int oz = chunk->q * CHUNK_SIZE - 1;
-    Map *map = &chunk->map;
-
-    MAP_FOR_EACH(map, ex, ey, ez, ew) {
-
-        if (ew <= 0)
-            continue;
-
-        int x = ex - ox;
-        int y = ey - oy;
-        int z = ez - oz;
-        int w = ew;
-
-        opaque[XYZ(x, y, z)] = !is_transparent(w);
-
-    } END_MAP_FOR_EACH;
-
-    chunk->faces = 0;
-
-    MAP_FOR_EACH(map, ex, ey, ez, ew) {
-
-        if (ew <= 0)
-            continue;
-
-        int x = ex - ox;
-        int y = ey - oy;
-        int z = ez - oz;
-        int f1 = !opaque[XYZ(x - 1, y, z)];
-        int f2 = !opaque[XYZ(x + 1, y, z)];
-        int f3 = !opaque[XYZ(x, y + 1, z)];
-        int f4 = !opaque[XYZ(x, y - 1, z)];
-        int f5 = !opaque[XYZ(x, y, z - 1)];
-        int f6 = !opaque[XYZ(x, y, z + 1)];
-        int total = f1 + f2 + f3 + f4 + f5 + f6;
-
-        if (total == 0)
-            continue;
-
-        if (is_plant(ew))
-            total = 4;
-
-        chunk->faces += total;
-
-    } END_MAP_FOR_EACH;
-
-    chunk->data = malloc_faces(10, chunk->faces);
     int offset = 0;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
@@ -862,42 +818,64 @@ static void compute_chunk(Chunk *chunk)
         int x = ex - ox;
         int y = ey - oy;
         int z = ez - oz;
-        int f1 = !opaque[XYZ(x - 1, y, z)];
-        int f2 = !opaque[XYZ(x + 1, y, z)];
-        int f3 = !opaque[XYZ(x, y + 1, z)];
-        int f4 = !opaque[XYZ(x, y - 1, z)];
-        int f5 = !opaque[XYZ(x, y, z - 1)];
-        int f6 = !opaque[XYZ(x, y, z + 1)];
-        int total = f1 + f2 + f3 + f4 + f5 + f6;
 
-        if (total == 0)
+        opaque[XYZ(x, y, z)] = !is_transparent(ew);
+
+    } END_MAP_FOR_EACH;
+
+    chunk->faces = 0;
+
+    MAP_FOR_EACH(map, ex, ey, ez, ew) {
+
+        int total;
+
+        if (ew <= 0)
             continue;
 
         if (is_plant(ew))
+        {
+
             total = 4;
 
-        float ao[6][4] = {
-            {0.0, 0.0, 0.0, 0.0},
-            {0.0, 0.0, 0.0, 0.0},
-            {0.0, 0.0, 0.0, 0.0},
-            {0.0, 0.0, 0.0, 0.0},
-            {0.0, 0.0, 0.0, 0.0},
-            {0.0, 0.0, 0.0, 0.0}
-        };
+        }
 
-        float light[6][4] = {
-            {0.5, 0.5, 0.5, 0.5},
-            {0.5, 0.5, 0.5, 0.5},
-            {0.5, 0.5, 0.5, 0.5},
-            {0.5, 0.5, 0.5, 0.5},
-            {0.5, 0.5, 0.5, 0.5},
-            {0.5, 0.5, 0.5, 0.5}
-        };
+        else
+        {
+
+            int x = ex - ox;
+            int y = ey - oy;
+            int z = ez - oz;
+            int f1 = !opaque[XYZ(x - 1, y, z)];
+            int f2 = !opaque[XYZ(x + 1, y, z)];
+            int f3 = !opaque[XYZ(x, y + 1, z)];
+            int f4 = !opaque[XYZ(x, y - 1, z)];
+            int f5 = !opaque[XYZ(x, y, z - 1)];
+            int f6 = !opaque[XYZ(x, y, z + 1)];
+
+            total = f1 + f2 + f3 + f4 + f5 + f6;
+
+
+        }
+
+        chunk->faces += total;
+
+    } END_MAP_FOR_EACH;
+
+    chunk->data = malloc_faces(10, chunk->faces);
+
+    MAP_FOR_EACH(map, ex, ey, ez, ew) {
+
+        int total;
+
+        if (ew <= 0)
+            continue;
 
         if (is_plant(ew))
         {
 
             float rotation = noise_simplex2(ex, ez, 4, 0.5, 2) * 360;
+
+            total = 4;
 
             make_plant(chunk->data + offset, 0.0, 1.0, ex, ey, ez, 0.5, ew, rotation);
 
@@ -905,6 +883,39 @@ static void compute_chunk(Chunk *chunk)
 
         else
         {
+
+            int x = ex - ox;
+            int y = ey - oy;
+            int z = ez - oz;
+            int f1 = !opaque[XYZ(x - 1, y, z)];
+            int f2 = !opaque[XYZ(x + 1, y, z)];
+            int f3 = !opaque[XYZ(x, y + 1, z)];
+            int f4 = !opaque[XYZ(x, y - 1, z)];
+            int f5 = !opaque[XYZ(x, y, z - 1)];
+            int f6 = !opaque[XYZ(x, y, z + 1)];
+
+            total = f1 + f2 + f3 + f4 + f5 + f6;
+
+            if (total == 0)
+                continue;
+
+            float ao[6][4] = {
+                {0.0, 0.0, 0.0, 0.0},
+                {0.0, 0.0, 0.0, 0.0},
+                {0.0, 0.0, 0.0, 0.0},
+                {0.0, 0.0, 0.0, 0.0},
+                {0.0, 0.0, 0.0, 0.0},
+                {0.0, 0.0, 0.0, 0.0}
+            };
+
+            float light[6][4] = {
+                {0.5, 0.5, 0.5, 0.5},
+                {0.5, 0.5, 0.5, 0.5},
+                {0.5, 0.5, 0.5, 0.5},
+                {0.5, 0.5, 0.5, 0.5},
+                {0.5, 0.5, 0.5, 0.5},
+                {0.5, 0.5, 0.5, 0.5}
+            };
 
             make_cube(chunk->data + offset, ao, light, f1, f2, f3, f4, f5, f6, ex, ey, ez, 0.5, ew);
 
