@@ -37,8 +37,6 @@ typedef struct
     int q;
     int faces;
     int dirty;
-    int miny;
-    int maxy;
     GLuint buffer;
     GLfloat *data;
 
@@ -841,8 +839,6 @@ static void compute_chunk(Chunk *chunk)
 
     } END_MAP_FOR_EACH;
 
-    chunk->miny = 256;
-    chunk->maxy = 0;
     chunk->faces = 0;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
@@ -867,8 +863,6 @@ static void compute_chunk(Chunk *chunk)
         if (is_plant(ew))
             total = 4;
 
-        chunk->miny = MIN(chunk->miny, ey);
-        chunk->maxy = MAX(chunk->maxy, ey);
         chunk->faces += total;
 
     } END_MAP_FOR_EACH;
