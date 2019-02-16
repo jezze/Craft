@@ -824,13 +824,15 @@ static void compute_chunk(Chunk *chunk)
 {
 
     char *opaque = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
-    char *highest = (char *)calloc(XZ_SIZE * XZ_SIZE, sizeof(char));
     int ox = chunk->p * CHUNK_SIZE - 1;
     int oy = -1;
     int oz = chunk->q * CHUNK_SIZE - 1;
     Map *map = &chunk->map;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
+
+        if (ew <= 0)
+            continue;
 
         int x = ex - ox;
         int y = ey - oy;
@@ -839,14 +841,14 @@ static void compute_chunk(Chunk *chunk)
 
         opaque[XYZ(x, y, z)] = !is_transparent(w);
 
-        if (opaque[XYZ(x, y, z)])
-            highest[XZ(x, z)] = MAX(highest[XZ(x, z)], y);
-
     } END_MAP_FOR_EACH;
 
     chunk->faces = 0;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
+
+        if (ew <= 0)
+            continue;
 
         int x = ex - ox;
         int y = ey - oy;
@@ -873,6 +875,9 @@ static void compute_chunk(Chunk *chunk)
     int offset = 0;
 
     MAP_FOR_EACH(map, ex, ey, ez, ew) {
+
+        if (ew <= 0)
+            continue;
 
         int x = ex - ox;
         int y = ey - oy;
@@ -930,7 +935,6 @@ static void compute_chunk(Chunk *chunk)
     } END_MAP_FOR_EACH;
 
     free(opaque);
-    free(highest);
 
 }
 
