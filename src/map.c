@@ -69,7 +69,7 @@ int map_set(Map *map, int x, int y, int z, int w)
 
     int overwrite = 0;
 
-    while (!EMPTY_ENTRY(entry))
+    while (entry->value)
     {
 
         if (entry->e.x == x && entry->e.y == y && entry->e.z == z)
@@ -135,7 +135,7 @@ int map_get(Map *map, int x, int y, int z)
 
     MapEntry *entry = map->data + index;
 
-    while (!EMPTY_ENTRY(entry))
+    while (entry->value)
     {
 
         if (entry->e.x == x && entry->e.y == y && entry->e.z == z)
@@ -154,6 +154,7 @@ void map_grow(Map *map)
 {
 
     Map new_map;
+    unsigned int i;
 
     new_map.dx = map->dx;
     new_map.dy = map->dy;
@@ -162,11 +163,22 @@ void map_grow(Map *map)
     new_map.size = 0;
     new_map.data = (MapEntry *)calloc(new_map.mask + 1, sizeof(MapEntry));
 
-    MAP_FOR_EACH(map, ex, ey, ez, ew) {
+    for (i = 0; i <= map->mask; i++)
+    {
 
-        map_set(&new_map, ex, ey, ez, ew);
+        MapEntry *entry = map->data + i;
+        int x, y, z;
 
-    } END_MAP_FOR_EACH;
+        if (entry->value == 0)
+            continue;
+
+        x = entry->e.x + map->dx;
+        y = entry->e.y + map->dy;
+        z = entry->e.z + map->dz;
+
+        map_set(&new_map, x, y, z, entry->e.w);
+
+    }
 
     free(map->data);
     map->mask = new_map.mask;
