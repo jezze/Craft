@@ -228,7 +228,14 @@ static GLuint gen_cube_buffer(float x, float y, float z, float n, int w)
 {
 
     GLfloat data[360];
-    float ao[6][4] = {0};
+    float ao[6][4] = {
+        {0.0, 0.0, 0.0, 0.0},
+        {0.0, 0.0, 0.0, 0.0},
+        {0.0, 0.0, 0.0, 0.0},
+        {0.0, 0.0, 0.0, 0.0},
+        {0.0, 0.0, 0.0, 0.0},
+        {0.0, 0.0, 0.0, 0.0}
+    };
     float light[6][4] = {
         {0.5, 0.5, 0.5, 0.5},
         {0.5, 0.5, 0.5, 0.5},
@@ -248,10 +255,8 @@ static GLuint gen_plant_buffer(float x, float y, float z, float n, int w)
 {
 
     GLfloat data[240];
-    float ao = 0;
-    float light = 1;
 
-    make_plant(data, ao, light, x, y, z, n, w, 45);
+    make_plant(data, 0.0, 1.0, x, y, z, n, w, 45);
 
     return gen_buffer(sizeof(data), data);
 
@@ -886,7 +891,15 @@ static void compute_chunk(Chunk *chunk)
         if (is_plant(ew))
             total = 4;
 
-        float ao[6][4] = {0};
+        float ao[6][4] = {
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0, 0.0}
+        };
+
         float light[6][4] = {
             {0.5, 0.5, 0.5, 0.5},
             {0.5, 0.5, 0.5, 0.5},
