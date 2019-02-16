@@ -1110,32 +1110,22 @@ static void load_chunks(Player *player, int radius, int max)
 
 }
 
-static void setblock(int x, int y, int z, int w)
-{
-
-    int p = chunked(x);
-    int q = chunked(z);
-    Chunk *chunk = find_chunk(p, q);
-
-    if (chunk)
-    {
-
-        if (map_set(&chunk->map, x, y, z, w))
-            chunk->dirty = 1;
-
-    }
-
-}
-
 static int getblock(int x, int y, int z)
 {
 
     Chunk *chunk = find_chunk(chunked(x), chunked(z));
 
-    if (chunk)
-        return map_get(&chunk->map, x, y, z);
+    return (chunk) ? map_get(&chunk->map, x, y, z) : 0;
 
-    return 0;
+}
+
+static void setblock(int x, int y, int z, int w)
+{
+
+    Chunk *chunk = find_chunk(chunked(x), chunked(z));
+
+    if (chunk && map_set(&chunk->map, x, y, z, w))
+        chunk->dirty = 1;
 
 }
 
