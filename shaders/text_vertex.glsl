@@ -7,7 +7,12 @@ attribute vec2 uv;
 
 varying vec2 fragment_uv;
 
-void main() {
+void main()
+{
+
     gl_Position = matrix * position;
+
     fragment_uv = uv;
+
 }
+
