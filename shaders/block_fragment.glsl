@@ -29,13 +29,6 @@ void main()
 
     bool cloud = color == vec3(1.0, 1.0, 1.0);
 
-    if (cloud && bool(ortho))
-    {
-
-        discard;
-
-    }
-
     float df = cloud ? 1.0 - diffuse * 0.2 : diffuse;
     float ao = cloud ? 1.0 - (1.0 - fragment_ao) * 0.2 : fragment_ao;
 
