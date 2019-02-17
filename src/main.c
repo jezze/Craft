@@ -498,13 +498,14 @@ static unsigned int aabbcheck(Box *b1, Box *b2)
 
 }
 
-static float aabbsweep(Box *b1, Box *b2, float *normalx, float *normaly, float *normalz)
+static void aabbsweep(Box *b1, Box *b2, float *newx, float *newy, float *newz)
 {
 
     float xInvEntry, yInvEntry, zInvEntry;
     float xInvExit, yInvExit, zInvExit;
     float xEntry, yEntry, zEntry;
     float xExit, yExit, zExit;
+    float normalx, normaly, normalz;
 
     if (b1->vx > 0.0f)
     {
@@ -605,35 +606,17 @@ static float aabbsweep(Box *b1, Box *b2, float *normalx, float *normaly, float *
     float entryTime = MAX(MAX(xEntry, yEntry), zEntry);
     float exitTime = MIN(MIN(xExit, yExit), zExit);
 
-    *normalx = 0.0f;
-    *normaly = 0.0f;
-    *normalz = 0.0f;
-
-/*
-    if (entryTime > exitTime || (xEntry < 0.0f && yEntry < 0.0f && zEntry < 0.0f) || xEntry > 1.0f || yEntry > 1.0f || zEntry > 1.0f)
-        return 1.0f;
-*/
+    normalx = 0.0f;
+    normaly = 0.0f;
+    normalz = 0.0f;
 
     if (xEntry > yEntry && xEntry > zEntry)
     {
 
         if (xInvEntry < 0.0f)
-        {
-
-            *normalx = 1.0f;
-            *normaly = 0.0f;
-            *normalz = 0.0f;
-
-        }
-
+            normalx = 1.0f;
         else
-        {
-
-            *normalx = -1.0f;
-            *normaly = 0.0f;
-            *normalz = 0.0f;
-
-        }
+            normalx = -1.0f;
 
     }
 
@@ -641,22 +624,9 @@ static float aabbsweep(Box *b1, Box *b2, float *normalx, float *normaly, float *
     {
 
         if (yInvEntry < 0.0f)
-        {
-
-            *normalx = 0.0f;
-            *normaly = 1.0f;
-            *normalz = 0.0f;
-
-        }
-
+            normaly = 1.0f;
         else
-        {
-
-            *normalx = 0.0f;
-            *normaly = -1.0f;
-            *normalz = 0.0f;
-
-        }
+            normaly = -1.0f;
 
     }
 
@@ -664,26 +634,20 @@ static float aabbsweep(Box *b1, Box *b2, float *normalx, float *normaly, float *
     {
 
         if (zInvEntry < 0.0f)
-        {
-
-            *normalx = 0.0f;
-            *normaly = 0.0f;
-            *normalz = 1.0f;
-
-        }
-
+            normalz = 1.0f;
         else
-        {
-
-            *normalx = 0.0f;
-            *normaly = 0.0f;
-            *normalz = -1.0f;
-
-        }
+            normalz = -1.0f;
 
     }
 
-    return entryTime;
+    if (normalx)
+        *newx = 0;
+
+    if (normaly)
+        *newy = 0;
+
+    if (normalz)
+        *newz = 0;
 
 }
 
@@ -726,9 +690,6 @@ static void player_collide(Player *player, int x, int y, int z)
             {
 
                 Chunk *chunk;
-                float normalx;
-                float normaly;
-                float normalz;
 
                 block.x = x + kx;
                 block.y = y + ky;
@@ -744,16 +705,7 @@ static void player_collide(Player *player, int x, int y, int z)
                 if (!aabbcheck(&box, &block))
                     continue;
 
-                float collisiontime = aabbsweep(&box, &block, &normalx, &normaly, &normalz);
-
-                if (normalx)
-                    newx = 0;
-
-                if (normaly)
-                    newy = 0;
-
-                if (normalz)
-                    newz = 0;
+                aabbsweep(&box, &block, &newx, &newy, &newz);
 
             }
 
